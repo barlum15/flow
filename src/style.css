@@ -693,6 +693,24 @@ main {
   stroke-linejoin: round;
 }
 
+.detail.door-ring {
+  fill: #c5ccd6;
+  stroke: rgba(0, 0, 0, 0.25);
+  stroke-width: 1;
+}
+
+.detail.door-glass {
+  fill: #5d6b7d;
+  stroke: #3f4a59;
+  stroke-width: 1;
+}
+
+.detail.seam {
+  stroke: rgba(0, 0, 0, 0.35);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
 .meter polygon {
   fill: var(--meter);
 }

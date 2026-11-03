@@ -80,6 +80,34 @@ function floorText(parent, text, x, y, className) {
   el("text", { class: className, "font-size": 0.32 }, g).textContent = text;
 }
 
+/**
+ * Group whose local coordinates lie in a visible face of a box, in meters:
+ * "front" is the +y face (u = x, v = z), "side" is the +x face (u = y, v = z).
+ */
+function faceGroup(parent, [, , , x1, y1], face) {
+  const o = face === "side" ? iso(x1, 0, 0) : iso(0, y1, 0);
+  const ux = face === "side" ? -TILE_W / 2 : TILE_W / 2;
+  return el("g", { transform: `matrix(${ux} ${TILE_H / 2} 0 ${-Z_SCALE} ${o.x} ${o.y})` }, parent);
+}
+
+/**
+ * Draws flat details on the faces of a device, e.g. the door of a washing
+ * machine ({ shape: "circle", u, v, r }) or a seam ({ shape: "line", u1, v1, u2, v2 }).
+ * Coordinates are world meters within the face of the referenced box.
+ */
+function drawDetails(parent, device) {
+  for (const detail of device.details ?? []) {
+    const box = boxSpec(device.boxes[detail.box ?? 0], device).box;
+    const g = faceGroup(parent, box, detail.face ?? "front");
+    const cls = `detail ${detail.className ?? ""}`.trim();
+    if (detail.shape === "circle") {
+      el("circle", { class: cls, cx: detail.u, cy: detail.v, r: detail.r, "vector-effect": "non-scaling-stroke" }, g);
+    } else if (detail.shape === "line") {
+      el("line", { class: cls, x1: detail.u1, y1: detail.v1, x2: detail.u2, y2: detail.v2, "vector-effect": "non-scaling-stroke" }, g);
+    }
+  }
+}
+
 /** Normalizes a device box entry: either [x0, y0, z0, x1, y1, z1] or { box, color, glow }. */
 function boxSpec(entry, device) {
   return Array.isArray(entry) ? { box: entry, color: device.color } : { color: device.color, ...entry };
@@ -185,6 +213,7 @@ export class HouseView {
         const p = iso((x0 + x1) / 2, (y0 + y1) / 2, z1);
         if (p.y < top.y) top = p;
       }
+      drawDetails(group, device);
 
       const label = el("g", { class: "device-label", transform: `translate(${top.x} ${top.y - 14})` }, labelLayer);
       el("text", { class: "device-name", y: -18 }, label).textContent = device.name;

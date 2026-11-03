@@ -143,6 +143,7 @@ The house is drawn in an isometric projection. All positions in `data/devices.js
 
 - `x` runs along the back wall, `y` along the left wall, `z` is the height above the floor.
 - A device consists of one or more boxes `[x0, y0, z0, x1, y1, z1]`. A box can have its own `color`, and `"glow": true` makes it light up while the device is on (e.g. a lamp shade).
+- `details` draws flat shapes on the visible faces of a box, e.g. the round door of the washing machine (`"shape": "circle"`) or the seam between fridge and freezer (`"shape": "line"`). `face` is `"front"` (u = x) or `"side"` (u = y), `v` is the height.
 - `wall` (`"left"` or `"back"`) tells along which wall the cable is routed, and `plug` is where the cable enters the device.
 - Cables run from the smart meter along the walls in parallel lanes and are ordered automatically so they never cross.
 
