@@ -185,9 +185,10 @@ export class HouseView {
         if (p.y < top.y) top = p;
       }
 
-      const label = el("g", { class: "device-label", transform: `translate(${top.x} ${top.y - 14})` }, labelLayer);
-      el("text", { class: "device-name", y: -16 }, label).textContent = device.name;
+      const label = el("g", { class: "device-label", transform: `translate(${top.x} ${top.y - 18})` }, labelLayer);
+      el("text", { class: "device-name", y: -22 }, label).textContent = device.name;
       cable.label = el("text", { class: "device-watts", y: 0 }, label);
+      cable.label.textContent = "0 W"; // reserve space for label placement
       cable.group = group;
       cable.labelGroup = label;
     }
@@ -195,9 +196,10 @@ export class HouseView {
     // Smart meter label
     const [mx0, my0, mz0, mx1, my1, mz1] = meter.box;
     const mSide = iso(mx0, (my0 + my1) / 2, (mz0 + mz1) / 2);
-    const meterLabel = el("g", { class: "device-label meter-label", transform: `translate(${mSide.x - 34} ${mSide.y})` }, labelLayer);
-    el("text", { class: "device-name", y: -10 }, meterLabel).textContent = "Smart meter";
-    this.meterLabel = el("text", { class: "meter-watts", y: 12 }, meterLabel);
+    const meterLabel = el("g", { class: "device-label meter-label", transform: `translate(${mSide.x - 40} ${mSide.y})` }, labelLayer);
+    el("text", { class: "device-name", y: -16 }, meterLabel).textContent = "Smart meter";
+    this.meterLabel = el("text", { class: "meter-watts", y: 16 }, meterLabel);
+    this.meterLabel.textContent = "0 W";
 
     this.placeLabels(labelLayer);
 

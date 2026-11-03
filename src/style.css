@@ -15,6 +15,13 @@
   --wall-top: #f7f8fa;
   --edge: rgba(0, 0, 0, 0.12);
   --meter: #cfd6df;
+  --grid: rgba(0, 0, 0, 0.07);
+  --energy-fill: rgba(245, 179, 1, 0.35);
+  --display-bg: #1d2330;
+  --display-text: #f3f4f6;
+  --display-muted: #9aa3b2;
+  --live: #e5484d;
+  --live-bg: rgba(229, 72, 77, 0.12);
   color-scheme: light dark;
 }
 
@@ -36,6 +43,11 @@
     --wall-top: #3c4555;
     --edge: rgba(0, 0, 0, 0.35);
     --meter: #4a5465;
+    --grid: rgba(255, 255, 255, 0.07);
+    --energy-fill: rgba(255, 201, 60, 0.3);
+    --display-bg: #0d1016;
+    --live: #ff6369;
+    --live-bg: rgba(255, 99, 105, 0.15);
   }
 }
 
@@ -105,20 +117,28 @@ select {
 
 main {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  align-items: start;
   gap: 16px;
   padding: 16px 24px;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   main {
     grid-template-columns: 1fr;
     padding: 16px;
   }
 }
 
+.panel {
+  padding: 16px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
 #house,
-.stat-value,
+.readout,
 .clock,
 .pill {
   -webkit-user-select: none;
@@ -126,37 +146,120 @@ main {
 }
 
 #house {
+  display: block;
   width: 100%;
   height: auto;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 12px;
 }
 
-aside {
+.device-list {
   display: flex;
-  flex-direction: column;
-  gap: 16px;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
 }
 
-aside section {
-  padding: 16px;
-  background: var(--panel);
+.device-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px 4px 6px;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  cursor: pointer;
 }
 
-.stats {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
+/* Smart meter panel */
+
+.meter-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: 12px;
+}
+
+.meter-header h2 {
+  margin: 0;
+  font-size: 17px;
+}
+
+.live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--live-bg);
+  color: var(--live);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+.live-badge.paused {
+  background: var(--bg);
+  color: var(--muted);
+}
+
+.live-badge.paused .live-dot {
+  animation: none;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+
+.readout {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: end;
+  gap: 16px 32px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  border-radius: 10px;
+  background: var(--display-bg);
+  color: var(--display-text);
+}
+
+@media (max-width: 640px) {
+  .readout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.readout .stat-label {
+  color: var(--display-muted);
+}
+
+.readout-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 12px;
 }
 
 .stat-label {
   display: block;
-  color: var(--muted);
+  margin-bottom: 2px;
   font-size: 12px;
+}
+
+.big-value {
+  display: block;
+  font-size: 48px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--energy);
+  font-variant-numeric: tabular-nums;
 }
 
 .stat-value {
@@ -165,20 +268,45 @@ aside section {
   font-variant-numeric: tabular-nums;
 }
 
-#chart {
-  width: 100%;
-  height: 160px;
+.counter {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  letter-spacing: 0.04em;
+}
+
+.unit {
+  margin-left: 4px;
+  font-size: 0.5em;
+  font-weight: 500;
+  color: var(--display-muted);
+}
+
+.chart-block + .chart-block {
+  margin-top: 16px;
+}
+
+.chart-title {
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.chart-hint {
+  margin-left: 6px;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.chart {
   display: block;
+  width: 100%;
 }
 
-.device-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.chart-live {
+  height: 240px;
 }
 
-.device-toggle {
-  cursor: pointer;
+.chart-day {
+  height: 180px;
 }
 
 .error {
@@ -277,17 +405,17 @@ aside section {
   fill: var(--text);
   paint-order: stroke;
   stroke: var(--panel);
-  stroke-width: 4px;
+  stroke-width: 6px;
   stroke-linejoin: round;
 }
 
 .device-name {
-  font-size: 13px;
+  font-size: 20px;
   font-weight: 600;
 }
 
 .device-label .device-watts {
-  font-size: 12px;
+  font-size: 18px;
   fill: var(--muted);
   font-variant-numeric: tabular-nums;
 }
@@ -303,7 +431,7 @@ aside section {
 }
 
 .meter-watts {
-  font-size: 18px;
+  font-size: 28px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }

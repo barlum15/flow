@@ -25,22 +25,48 @@
     </header>
 
     <main>
-      <svg id="house" viewBox="0 0 1000 600" role="img" aria-label="Devices connected to the smart meter"></svg>
+      <section class="panel house-panel">
+        <svg id="house" role="img" aria-label="Devices in the house connected to the smart meter"></svg>
+        <div id="devices" class="device-list" aria-label="Switch devices on or off"></div>
+      </section>
 
-      <aside>
-        <section>
+      <section class="panel meter-panel">
+        <div class="meter-header">
           <h2>Smart meter</h2>
-          <div class="stats">
-            <div><span class="stat-label">Current total</span><span id="total" class="stat-value">0 W</span></div>
-            <div><span class="stat-label">Energy today</span><span id="energy" class="stat-value">0.00 kWh</span></div>
+          <span id="live-badge" class="live-badge"><span class="live-dot"></span>Live</span>
+        </div>
+
+        <div class="readout">
+          <div class="readout-main">
+            <span class="stat-label">Current power</span>
+            <span class="big-value"><span id="total">0</span><span class="unit">W</span></span>
           </div>
-          <canvas id="chart" aria-label="Recorded total consumption"></canvas>
-        </section>
-        <section>
-          <h2>Devices</h2>
-          <div id="devices" class="device-list"></div>
-        </section>
-      </aside>
+          <div class="readout-grid">
+            <div>
+              <span class="stat-label">Today</span>
+              <span class="stat-value"><span id="energy">0.00</span><span class="unit">kWh</span></span>
+            </div>
+            <div>
+              <span class="stat-label">Peak today</span>
+              <span class="stat-value"><span id="peak">0</span><span class="unit">W</span></span>
+            </div>
+            <div>
+              <span class="stat-label">Meter reading</span>
+              <span class="stat-value counter"><span id="reading">00000.000</span><span class="unit">kWh</span></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="chart-block">
+          <div class="chart-title">Live <span class="chart-hint">last 60 min · 1-minute resolution</span></div>
+          <canvas id="live-chart" class="chart chart-live" aria-label="Total power of the last 60 minutes"></canvas>
+        </div>
+
+        <div class="chart-block">
+          <div class="chart-title">Today <span class="chart-hint">00:00 – 24:00 · 1-minute resolution</span></div>
+          <canvas id="day-chart" class="chart chart-day" aria-label="Total power recorded today"></canvas>
+        </div>
+      </section>
     </main>
 
     <p id="error" class="error"></p>

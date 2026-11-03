@@ -66,7 +66,7 @@ Then open http://localhost:8000 in your browser. A local web server is needed be
 | `index.html` | Page layout and controls |
 | `src/simulation.js` | Devices, smart meter and simulated clock |
 | `src/view.js` | Isometric SVG rendering of the house, devices, cables and the yellow balls |
-| `src/chart.js` | Chart of the totals recorded by the smart meter |
+| `src/chart.js` | Live and daily charts of the totals recorded by the smart meter |
 | `src/main.js` | Loads data and runs the animation loop |
 | `src/style.css` | Styling (light and dark mode) |
 | `data/devices.json` | Floor plan, smart meter position and devices (shape, plug position, hourly consumption curve with 24 values in watts) |
@@ -75,9 +75,16 @@ Then open http://localhost:8000 in your browser. A local web server is needed be
 
 1. A simulated clock runs through the day (speed: 1 min/s, 10 min/s or 1 h/s).
 2. On every step, each device looks up its current power in its consumption curve and **requests** it from the smart meter.
-3. The smart meter **only adds up** the requested watts. It never knows which device asked. Every 5 simulated minutes it stores the total.
+3. The smart meter **only adds up** the requested watts. It never knows which device asked. Every simulated minute it stores the average total of that minute (1-minute resolution).
 4. Each cable shows yellow balls flowing from the smart meter to the device that draws the power; more power means more balls.
-5. Devices can be switched off in the side panel to see how the total changes.
+5. Devices can be switched off below the house to see how the total changes.
+
+### Smart Meter Display
+
+- **Current power** as a large live value, plus energy today, peak today and the meter reading (total kWh since start, like a real counter)
+- **Live chart**: scrolling view of the last 60 simulated minutes with the current value as the newest point
+- **Today chart**: the whole day from 00:00 to 24:00 at 1-minute resolution with a marker for the current time
+- The meter keeps the last two simulated days of records
 
 ## Isometric View
 

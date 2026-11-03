@@ -1,8 +1,9 @@
-import { Device, SmartMeter, Simulation } from "./simulation.js";
+import { Device, SmartMeter, Simulation, MINUTES_PER_DAY } from "./simulation.js";
 import { HouseView } from "./view.js";
 import { drawChart } from "./chart.js";
 
 const MAX_STEP_MINUTES = 1; // simulation resolution per step
+const LIVE_WINDOW_MINUTES = 60; // range of the live chart
 
 async function loadData() {
   const response = await fetch("data/devices.json");
@@ -24,6 +25,12 @@ function formatTime(minuteOfDay) {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
+/** Formats the meter reading like a mechanical counter: 00012.345 */
+function formatReading(kWh) {
+  const [whole, fraction] = kWh.toFixed(3).split(".");
+  return `${whole.padStart(5, "0")}.${fraction}`;
+}
+
 function buildDeviceList(container, devices) {
   for (const device of devices) {
     const label = document.createElement("label");
@@ -43,20 +50,17 @@ async function start() {
   const sim = new Simulation(devices, meter);
   const view = new HouseView(document.getElementById("house"), devices, layout);
 
-  const clock = document.getElementById("clock");
-  const day = document.getElementById("day");
-  const total = document.getElementById("total");
-  const energy = document.getElementById("energy");
-  const chart = document.getElementById("chart");
-  const playButton = document.getElementById("play");
-  const speedSelect = document.getElementById("speed");
+  const $ = (id) => document.getElementById(id);
+  const playButton = $("play");
+  const speedSelect = $("speed");
 
-  buildDeviceList(document.getElementById("devices"), devices);
+  buildDeviceList($("devices"), devices);
 
   let playing = true;
   playButton.addEventListener("click", () => {
     playing = !playing;
     playButton.textContent = playing ? "Pause" : "Play";
+    $("live-badge").classList.toggle("paused", !playing);
   });
 
   sim.step(0);
@@ -76,11 +80,30 @@ async function start() {
     }
 
     view.render(playing ? dt : 0, meter.total);
-    setText(clock, formatTime(sim.minuteOfDay));
-    setText(day, `Day ${sim.day}`);
-    setText(total, `${Math.round(meter.total)} W`);
-    setText(energy, `${meter.energyKWh.toFixed(2)} kWh`);
-    drawChart(chart, meter.records, sim.minuteOfDay);
+
+    setText($("clock"), formatTime(sim.minuteOfDay));
+    setText($("day"), `Day ${sim.day}`);
+    setText($("total"), Math.round(meter.total).toLocaleString("en-US"));
+    setText($("energy"), meter.energyKWh.toFixed(2));
+    setText($("peak"), Math.round(meter.peakW).toLocaleString("en-US"));
+    setText($("reading"), formatReading(meter.readingKWh));
+
+    const live = { t: sim.time, watts: meter.total };
+    drawChart($("live-chart"), {
+      records: meter.records,
+      from: sim.time - LIVE_WINDOW_MINUTES,
+      to: sim.time,
+      tickEvery: 15,
+      live,
+    });
+    drawChart($("day-chart"), {
+      records: meter.records,
+      from: sim.dayStart,
+      to: sim.dayStart + MINUTES_PER_DAY,
+      tickEvery: 180,
+      live,
+      now: sim.time,
+    });
 
     requestAnimationFrame(frame);
   }

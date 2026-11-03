@@ -1,6 +1,9 @@
 // Core simulation model: devices with consumption curves and a smart meter
 // that only ever sees the sum of all requests.
+//
+// Time is measured in simulated minutes since day 1, 00:00.
 
+export const MINUTES_PER_DAY = 1440;
 const HOURS_PER_DAY = 24;
 
 /** Returns the power (watts) of an hourly curve (24 values) at a given hour. */
@@ -27,13 +30,21 @@ export class Device {
 }
 
 export class SmartMeter {
-  constructor({ recordIntervalMinutes = 5 } = {}) {
+  constructor({ recordIntervalMinutes = 1, keepDays = 2 } = {}) {
     this.recordIntervalMinutes = recordIntervalMinutes;
+    this.maxRecords = Math.ceil((keepDays * MINUTES_PER_DAY) / recordIntervalMinutes);
+
     this.pending = 0; // sum of requests in the current tick
     this.total = 0; // last summed total in watts
-    this.energyKWh = 0; // accumulated energy for the current day
-    this.records = []; // stored totals: { minute, watts }
-    this.lastRecordedMinute = -Infinity;
+
+    this.readingKWh = 0; // meter reading: total energy since installation
+    this.energyKWh = 0; // energy of the current day
+    this.peakW = 0; // highest total of the current day
+
+    this.records = []; // stored totals: { t, watts } (average watts per interval)
+    this.slot = null; // start of the interval being recorded
+    this.slotWattMinutes = 0;
+    this.slotMinutes = 0;
   }
 
   /** Devices call this. The meter does not know who is asking - only how much. */
@@ -41,23 +52,40 @@ export class SmartMeter {
     this.pending += watts;
   }
 
-  /** Closes the current tick: sums the requests and stores the total. */
-  commit(minuteOfDay, dtHours) {
+  /**
+   * Closes the current tick: sums the requests, meters the energy and stores
+   * the average total per interval.
+   * @param {number} time start of the tick in minutes since the simulation start
+   * @param {number} minutes length of the tick in minutes
+   */
+  commit(time, minutes) {
     this.total = this.pending;
     this.pending = 0;
-    this.energyKWh += (this.total * dtHours) / 1000;
 
-    const slot = Math.floor(minuteOfDay / this.recordIntervalMinutes) * this.recordIntervalMinutes;
-    if (slot !== this.lastRecordedMinute) {
-      this.records.push({ minute: slot, watts: this.total });
-      this.lastRecordedMinute = slot;
+    const kWh = (this.total * minutes) / 60 / 1000;
+    this.readingKWh += kWh;
+    this.energyKWh += kWh;
+    this.peakW = Math.max(this.peakW, this.total);
+
+    const slot = Math.floor(time / this.recordIntervalMinutes) * this.recordIntervalMinutes;
+    if (this.slot !== null && slot !== this.slot) this.closeSlot();
+    this.slot = slot;
+    this.slotWattMinutes += this.total * minutes;
+    this.slotMinutes += minutes;
+  }
+
+  closeSlot() {
+    if (this.slotMinutes > 0) {
+      this.records.push({ t: this.slot, watts: this.slotWattMinutes / this.slotMinutes });
+      if (this.records.length > this.maxRecords) this.records.splice(0, this.records.length - this.maxRecords);
     }
+    this.slotWattMinutes = 0;
+    this.slotMinutes = 0;
   }
 
   resetDay() {
-    this.records = [];
     this.energyKWh = 0;
-    this.lastRecordedMinute = -Infinity;
+    this.peakW = 0;
   }
 }
 
@@ -65,22 +93,31 @@ export class Simulation {
   constructor(devices, meter, { startHour = 6 } = {}) {
     this.devices = devices;
     this.meter = meter;
-    this.minuteOfDay = startHour * 60;
-    this.day = 1;
+    this.time = startHour * 60; // minutes since day 1, 00:00
+  }
+
+  get day() {
+    return Math.floor(this.time / MINUTES_PER_DAY) + 1;
+  }
+
+  get minuteOfDay() {
+    return this.time % MINUTES_PER_DAY;
+  }
+
+  /** Start of the current day in minutes since the simulation start. */
+  get dayStart() {
+    return this.time - this.minuteOfDay;
   }
 
   /** Advances simulated time by the given number of minutes. */
   step(minutes) {
-    let next = this.minuteOfDay + minutes;
-    if (next >= HOURS_PER_DAY * 60) {
-      next -= HOURS_PER_DAY * 60;
-      this.day += 1;
-      this.meter.resetDay();
-    }
-    this.minuteOfDay = next;
-
-    const hour = this.minuteOfDay / 60;
+    const start = this.time;
+    const hour = (start % MINUTES_PER_DAY) / 60;
     for (const device of this.devices) device.update(hour, this.meter);
-    this.meter.commit(this.minuteOfDay, minutes / 60);
+    this.meter.commit(start, minutes);
+
+    const dayBefore = this.day;
+    this.time += minutes;
+    if (this.day !== dayBefore) this.meter.resetDay();
   }
 }
