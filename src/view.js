@@ -19,6 +19,12 @@ const METER_LANE_GAP = 0.09; // distance between cables leaving the meter (m)
 const BALLS_PER_WATT_SECOND = 0.004; // spawn rate: 1000 W -> 4 balls per second
 const BALL_SPEED = 160; // px per real second
 const MAX_BALLS_PER_CABLE = 80;
+const MIN_BALLS_PER_SECOND = 0.8; // even small loads (e.g. 45 W) stay visible
+
+/** Balls per second on the cable of a device drawing `power` watts. */
+function spawnRate(power) {
+  return power > 0 ? Math.max(MIN_BALLS_PER_SECOND, power * BALLS_PER_WATT_SECOND) : 0;
+}
 
 /** Projects a world point (meters) to screen coordinates. */
 export function iso(x, y, z = 0) {
@@ -284,7 +290,8 @@ export class HouseView {
    * @param {number} dtSeconds
    * @param {number} meterTotal
    * @param {{ key: number, powers: Record<string, number> }} [snapshot] values of a
-   *   selected minute: the house then shows them, with the balls frozen
+   *   selected minute: the house then shows them, and the balls keep flowing
+   *   at that minute's rate
    */
   render(dtSeconds, meterTotal, snapshot) {
     const snapshotChanged = snapshot && snapshot.key !== this.snapshotKey;
@@ -301,15 +308,12 @@ export class HouseView {
       cable.labelGroup.classList.toggle("disabled", !device.enabled);
       setText(cable.label, `${Math.round(power)} W`);
 
-      if (snapshot) {
-        // Frozen picture of the selected minute: as many balls as would be on
-        // the cable at that power, spread evenly and not moving.
-        if (snapshotChanged) this.freezeBalls(cable, power);
-        continue;
-      }
+      // A newly selected minute starts with the amount of balls that would be
+      // on the cable at that power, so the picture is right immediately.
+      if (snapshotChanged) this.seedBalls(cable, power);
 
-      // Spawn balls at the smart meter proportional to the current power draw.
-      cable.spawnBudget += power * BALLS_PER_WATT_SECOND * dtSeconds;
+      // Spawn balls at the smart meter proportional to the power draw.
+      cable.spawnBudget += spawnRate(power) * dtSeconds;
       while (cable.spawnBudget >= 1) {
         cable.spawnBudget -= 1;
         if (cable.balls.length < MAX_BALLS_PER_CABLE) {
@@ -342,12 +346,12 @@ export class HouseView {
   }
 
   /** Replaces the balls of a cable by the steady-state amount for `power`, evenly spaced. */
-  freezeBalls(cable, power) {
+  seedBalls(cable, power) {
     for (const ball of cable.balls) ball.node.remove();
     cable.balls = [];
     cable.spawnBudget = 0;
     const travelSeconds = cable.length / BALL_SPEED;
-    const count = Math.min(MAX_BALLS_PER_CABLE, Math.round(power * BALLS_PER_WATT_SECOND * travelSeconds));
+    const count = Math.min(MAX_BALLS_PER_CABLE, Math.round(spawnRate(power) * travelSeconds));
     for (let i = 0; i < count; i++) {
       const ball = { node: el("circle", { class: "ball", r: 3.5 }, this.ballLayer), distance: ((i + 0.5) / count) * cable.length };
       this.placeBall(cable, ball);

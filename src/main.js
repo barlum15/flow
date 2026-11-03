@@ -236,10 +236,11 @@ async function start() {
     feedDisaggregation();
 
     // While a minute is selected, the house shows the actual device power of
-    // that minute (frozen); otherwise the live values.
+    // that minute, with the balls flowing at that minute's rate; otherwise the
+    // live values.
     const selected = nilmView.selectedT !== null ? nilmView.entryAt(nilmView.selectedT) : null;
     if (selected) {
-      view.render(0, selected.total, { key: selected.t, powers: selected.truth });
+      view.render(dt, selected.total, { key: selected.t, powers: selected.truth });
     } else {
       view.render(playing && !waiting ? dt : 0, meter.total);
     }

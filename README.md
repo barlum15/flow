@@ -93,7 +93,7 @@ Then open http://localhost:8000 in your browser. A local web server is needed be
 1. A simulated clock runs through the day (speed: 1 min/s, 10 min/s or 1 h/s).
 2. On every step, each device looks up its current power in its consumption curve and **requests** it from the smart meter.
 3. The smart meter **only adds up** the requested watts. It never knows which device asked. Every simulated minute it stores the average total of that minute (1-minute resolution).
-4. Each cable shows yellow balls flowing from the smart meter to the device that draws the power; more power means more balls.
+4. Each cable shows yellow balls flowing from the smart meter to the device that draws the power; more power means more balls. Every device that is on gets at least a few balls, so small loads (e.g. the AHU at 45 W) stay visible.
 5. Devices can be switched off below the house to see how the total changes.
 
 ### Smart Meter Display
@@ -127,7 +127,7 @@ Below the house and the smart meter, a panel estimates which appliances are runn
 - On/off accuracy and energy accuracy (1 − Σ|estimate − actual| / (2 · Σ actual)) over the last 24 hours
 - Stacked chart of the estimated contributions with the measured total as a dashed line; it follows the Live/Today switch of the smart meter chart
 
-**Inspecting a point in time:** click into the *Estimated breakdown* chart or into the smart meter chart to look at a specific minute. Both charts share the selection, and the smart meter readout then shows the power of that minute (*Power at 09:29* instead of *Current power*). The house shows the actual power of every device in that minute, with the balls frozen, so you can compare what really ran (house) with what the disaggregation estimated (table below). The whole program pauses, the table shows the estimates and the actual values of that minute, and both charts mark it. While paused, the arrow keys ← / → step through the minutes. Press **Play** to continue; the table then returns to the live values.
+**Inspecting a point in time:** click into the *Estimated breakdown* chart or into the smart meter chart to look at a specific minute. Both charts share the selection, and the smart meter readout then shows the power of that minute (*Power at 09:29* instead of *Current power*). The house shows the actual power of every device in that minute, with the balls flowing at that minute's rate, so you can compare what really ran (house) with what the disaggregation estimated (table below). The whole program pauses, the table shows the estimates and the actual values of that minute, and both charts mark it. While paused, the arrow keys ← / → step through the minutes. Press **Play** to continue; the table then returns to the live values.
 
 On the simulated placeholder day the model reaches about 86 % on/off accuracy and 64 % energy accuracy. The hardest moments are minutes in which several appliances switch at the same time, or in which different appliances have similar power (e.g. electric stove ~2350 W vs. tumble dryer ~2400 W, dishwasher 1800 W vs. washing machine 2000 W). In such cases the panel splits the probability between the candidates instead of guessing.
 
