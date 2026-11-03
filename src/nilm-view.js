@@ -3,6 +3,7 @@
 // stacked chart of the estimated contributions.
 
 import { niceStep, formatClock, formatWatts, MIN_GRID_SPACING } from "./chart.js";
+import { wasDrag } from "./chart-zoom.js";
 
 const UNEXPLAINED_COLOR = "#8a93a3";
 
@@ -42,6 +43,7 @@ export class NilmView {
     this.snapshotTime = root.querySelector("#nilm-snapshot-time");
 
     this.canvas.addEventListener("click", (event) => {
+      if (wasDrag(this.canvas)) return; // the mouse was dragged to move the time window
       const t = this.minuteAt(event.offsetX);
       if (t !== null) this.select(t);
     });

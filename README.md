@@ -78,6 +78,7 @@ Then open http://localhost:8000 in your browser. A local web server is needed be
 | `src/main.js` | Loads data and runs the animation loop |
 | `src/theme.js` | Light/dark mode switch |
 | `src/zoom.js` | Zoom into a single panel and back to the overview |
+| `src/chart-zoom.js` | Shared time-axis zoom of the smart meter and disaggregation charts |
 | `src/data-source.js` | Data sources: mock curves or recorded data from `data/real/` |
 | `tools/serve.py` | Local web server that disables browser caching |
 | `tools/import_h5.py` | Converts recorded `.h5` files into `data/real/` (local only, never committed) |
@@ -126,6 +127,8 @@ Next to the house and the smart meter, a panel estimates which appliances are ru
 - Model confidence: probability of the most likely combination of states
 - On/off accuracy and energy accuracy (1 − Σ|estimate − actual| / (2 · Σ actual)) over the last 24 hours
 - Stacked chart of the estimated contributions with the measured total as a dashed line; it follows the Live/Today switch of the smart meter chart
+
+**Zooming the time axis:** the smart meter chart and the *Estimated breakdown* share one time axis. Scroll with the mouse wheel over either chart to zoom in or out around the mouse position, drag to move the visible window, or use the − / + / Reset buttons above each chart. Zooming or moving one chart always does the same to the other. The labels adapt to the visible span (down to 10 minutes); switching between Live and Today resets the zoom.
 
 **Inspecting a point in time:** click into the *Estimated breakdown* chart or into the smart meter chart to look at a specific minute. Both charts share the selection, and the smart meter readout then shows the power of that minute (*Power at 09:29* instead of *Current power*). The house shows the actual power of every device in that minute, with the balls flowing at that minute's rate, so you can compare what really ran (house) with what the disaggregation estimated (table below). The whole program pauses, the table shows the estimates and the actual values of that minute, and both charts mark it. While paused, the arrow keys ← / → step through the minutes. Press **Play** to continue; the table then returns to the live values.
 

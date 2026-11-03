@@ -6,6 +6,7 @@ import { FhmmDisaggregator, NilmMetrics } from "./disaggregation.js";
 import { NilmView } from "./nilm-view.js";
 import { initZoom } from "./zoom.js";
 import { MockSource, RecordedSource } from "./data-source.js";
+import { TimeZoom, wasDrag } from "./chart-zoom.js";
 
 initThemeSwitch(document.getElementById("theme-switch"));
 initZoom(document.querySelector("main"));
@@ -186,11 +187,17 @@ async function start() {
   const meterCanvas = $("chart");
   let meterLayout = null;
   meterCanvas.addEventListener("click", (event) => {
-    if (!meterLayout) return;
+    if (!meterLayout || wasDrag(meterCanvas)) return;
     const { from, to, left, width } = meterLayout;
     if (event.offsetX < left || event.offsetX > left + width) return;
     nilmView.select(Math.floor(from + ((event.offsetX - left) / width) * (to - from)));
   });
+  // Shared time zoom: zooming or dragging in one chart changes both.
+  const timeZoom = new TimeZoom();
+  timeZoom.attach(meterCanvas, () => meterLayout);
+  timeZoom.attach(nilmView.canvas, () => nilmView.layout);
+  for (const bar of document.querySelectorAll(".time-zoom")) timeZoom.attachButtons(bar);
+
   meterCanvas.addEventListener("keydown", (event) => {
     if (nilmView.selectedT === null || !["ArrowLeft", "ArrowRight"].includes(event.key)) return;
     event.preventDefault();
@@ -206,6 +213,7 @@ async function start() {
   for (const tab of tabs) {
     tab.addEventListener("click", () => {
       chartRange = tab.dataset.range;
+      timeZoom.reset(); // a new range starts unzoomed
       for (const t of tabs) t.setAttribute("aria-selected", String(t === tab));
       $("chart-hint").textContent = CHART_HINTS[chartRange];
     });
@@ -260,10 +268,11 @@ async function start() {
     setText($("reading"), formatReading(meter.readingKWh));
 
     const live = { t: sim.time, watts: meter.total };
-    const range =
+    const base =
       chartRange === "live"
-        ? { from: sim.time - LIVE_WINDOW_MINUTES, to: sim.time, tickEvery: 15 }
-        : { from: sim.dayStart, to: sim.dayStart + MINUTES_PER_DAY, tickEvery: 180 };
+        ? { from: sim.time - LIVE_WINDOW_MINUTES, to: sim.time }
+        : { from: sim.dayStart, to: sim.dayStart + MINUTES_PER_DAY };
+    const range = timeZoom.apply(base); // the same zoomed window for both charts
     meterLayout = drawChart(meterCanvas, {
       records: meter.records,
       live,

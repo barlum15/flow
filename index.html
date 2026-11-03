@@ -119,6 +119,11 @@
               <button type="button" role="tab" data-range="day" aria-selected="true">Today</button>
             </div>
             <span id="chart-hint" class="chart-hint">00:00 – 24:00 · 1-minute resolution</span>
+            <div class="time-zoom" role="group" aria-label="Zoom the time axis of both charts">
+              <button type="button" class="zoom-out" title="Zoom out (both charts)" aria-label="Zoom out">−</button>
+              <button type="button" class="zoom-in" title="Zoom in (both charts)" aria-label="Zoom in">+</button>
+              <button type="button" class="zoom-reset" title="Show the whole range">Reset</button>
+            </div>
           </div>
           <div class="chart-wrap">
             <canvas
@@ -187,9 +192,16 @@
           </div>
 
           <div class="nilm-chart-block">
-            <div class="chart-title">
-              Estimated breakdown
-              <span class="chart-hint">stacked estimates · dashed line: measured total · click to inspect a minute</span>
+            <div class="chart-header">
+              <div class="chart-title">
+                Estimated breakdown
+                <span class="chart-hint">stacked estimates · dashed line: measured total · click to inspect a minute · scroll to zoom</span>
+              </div>
+              <div class="time-zoom" role="group" aria-label="Zoom the time axis of both charts">
+                <button type="button" class="zoom-out" title="Zoom out (both charts)" aria-label="Zoom out">−</button>
+                <button type="button" class="zoom-in" title="Zoom in (both charts)" aria-label="Zoom in">+</button>
+                <button type="button" class="zoom-reset" title="Show the whole range">Reset</button>
+              </div>
             </div>
             <div class="chart-wrap">
               <canvas
