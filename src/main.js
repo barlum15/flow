@@ -82,18 +82,23 @@ async function start() {
   const repeatDay = $("repeat-day");
   const repeatToggle = $("repeat-toggle");
 
-  const toggles = buildDeviceList($("devices"), devices, () => rebuildDisaggregation());
+  const toggles = buildDeviceList($("devices"), devices, () => scheduleRecompute());
   const nilmView = new NilmView($("nilm"), []);
 
   // Everything that depends on the data source and the start time. Rebuilt
   // when the source changes or when jumping to another recorded day.
-  let source, meter, sim, nilm, metrics, lastFedMinute;
+  let source, meter, sim, nilm, metrics, metricsDay, lastFedMinute;
 
-  function run(nextSource, startTime = nextSource.startTime) {
+  /**
+   * (Re)starts the simulation. `keepSelection` keeps the devices the user has
+   * switched on or off (used when the day is recalculated).
+   */
+  function run(nextSource, startTime = nextSource.startTime, { keepSelection = false } = {}) {
     source = nextSource;
     meter = new SmartMeter();
     sim = new Simulation(devices, meter, source, { startTime });
     metrics = new NilmMetrics();
+    metricsDay = null;
     lastFedMinute = -Infinity;
     nilmView.reset();
 
@@ -101,8 +106,8 @@ async function start() {
     for (const device of devices) {
       const { label, input } = toggles.get(device.id);
       const available = source.hasDevice(device.id);
-      device.enabled = available;
-      input.checked = available;
+      device.enabled = keepSelection ? device.enabled && available : available;
+      input.checked = device.enabled;
       input.disabled = !available;
       label.classList.toggle("no-data", !available);
       label.title = available ? "" : "No recorded data for this device";
@@ -120,8 +125,7 @@ async function start() {
   }
 
   // The disaggregation only models (and lists) the appliances that are
-  // switched on in the house. Changing the selection restarts the filter;
-  // it settles again within a few readings.
+  // switched on in the house.
   function rebuildDisaggregation() {
     const active = devices.filter((d) => d.enabled).map((d) => d.id);
     nilm = new FhmmDisaggregator(library, { only: active });
@@ -154,7 +158,47 @@ async function start() {
   run(sources[sourceSelect.value]);
 
   // Load disaggregation: fed with every new smart meter record (one per minute).
-  function feedDisaggregation() {
+  // Changing the device selection recalculates the current day from 00:00 up
+  // to the current time, so the smart meter, the house, the disaggregation and
+  // all key figures refer to the selected devices only. Several clicks in a
+  // row cause one recalculation; it runs in slices so the page stays fluid.
+  let recompute = null; // { target, selected, readingBase }
+  let lastFed = null; // latest disaggregation result, for refreshing the key figures
+  let recomputeTimer = null;
+
+  function scheduleRecompute() {
+    clearTimeout(recomputeTimer);
+    recomputeTimer = setTimeout(startRecompute, 300);
+  }
+
+  function startRecompute() {
+    const target = recompute ? recompute.target : sim.time;
+    const selected = recompute ? recompute.selected : nilmView.selectedT;
+    // Keep the meter reading of the previous days; only today is recalculated.
+    const readingBase = recompute ? recompute.readingBase : meter.readingKWh - meter.energyKWh;
+    run(source, target - (target % MINUTES_PER_DAY), { keepSelection: true });
+    meter.readingKWh = readingBase;
+    recompute = { target, selected, readingBase };
+  }
+
+  /** Advances the recalculation for at most `budgetMs`; returns true when it is done. */
+  function continueRecompute(budgetMs) {
+    const deadline = performance.now() + budgetMs;
+    while (sim.time < recompute.target && performance.now() < deadline) {
+      source.prefetch(sim.time);
+      if (!source.isReady(sim.time)) return false;
+      sim.step(Math.min(MAX_STEP_MINUTES, recompute.target - sim.time));
+      feedDisaggregation({ render: false });
+    }
+    if (sim.time < recompute.target) return false;
+    feedDisaggregation();
+    if (lastFed) nilmView.update(lastFed.result, lastFed.truth, metrics, nilm.lastUpdateMs); // fresh key figures
+    if (recompute.selected !== null) nilmView.select(recompute.selected);
+    recompute = null;
+    return true;
+  }
+
+  function feedDisaggregation({ render = true } = {}) {
     const records = meter.records;
     let i = records.length;
     while (i > 0 && records[i - 1].t > lastFedMinute) i--;
@@ -163,12 +207,19 @@ async function start() {
       const record = records[i];
       const result = nilm.update(record.watts);
       const truth = sim.truth.get(record.t);
+      // Key figures refer to the current day: start fresh at midnight.
+      const day = Math.floor(record.t / MINUTES_PER_DAY);
+      if (day !== metricsDay) {
+        metrics = new NilmMetrics();
+        metricsDay = day;
+      }
       if (truth) metrics.add(record.t, result, truth);
       nilmView.push(record.t, result, truth);
       lastFedMinute = record.t;
       latest = { result, truth };
+      lastFed = latest;
     }
-    if (latest) nilmView.update(latest.result, latest.truth, metrics, nilm.lastUpdateMs);
+    if (latest && render) nilmView.update(latest.result, latest.truth, metrics, nilm.lastUpdateMs);
   }
 
   let playing = true;
@@ -226,7 +277,9 @@ async function start() {
     last = now;
 
     let waiting = false;
-    if (playing) {
+    if (recompute) {
+      continueRecompute(25); // a slice of the recalculation per frame
+    } else if (playing) {
       let minutes = dt * Number(speedSelect.value); // simulated minutes per real second
       while (minutes > 0) {
         // Recorded days are loaded on demand; wait until the current one is there.
@@ -258,7 +311,10 @@ async function start() {
     const dayIndex = sim.day - 1;
     setText($("clock"), formatTime(sim.minuteOfDay));
     const dayText = source.repeating ? `${source.dayLabel(dayIndex)} · run ${sim.day}` : source.dayLabel(dayIndex);
-    setText($("day"), waiting ? "Loading…" : dayText);
+    const recalculating = recompute
+      ? `Recalculating… ${Math.round((100 * (sim.time % MINUTES_PER_DAY)) / Math.max(1, recompute.target % MINUTES_PER_DAY))} %`
+      : null;
+    setText($("day"), recalculating ?? (waiting ? "Loading…" : dayText));
     if (source.kind === "recorded" && document.activeElement !== dateJump) dateJump.value = source.dateOf(dayIndex);
     // While a minute is selected, the readout shows the power of that minute.
     setText($("power-label"), selected ? `Power at ${formatTime(selected.t % MINUTES_PER_DAY)}` : "Current power");

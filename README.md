@@ -117,7 +117,7 @@ Next to the house and the smart meter, a panel estimates which appliances are ru
 - The transition step is applied per appliance, so an update takes about 1 ms in the browser.
 - The spread of a state is treated as a persistent deviation from the nominal power, not as new noise every minute. Otherwise the model drifts towards whichever explanation has the narrowest spread.
 
-**Only the selected appliances:** the disaggregation models and lists only the appliances that are switched on with the chips below the house. Unchecking e.g. the TV removes it from the table, the chart and the model (the appliance inventory of the house is known, as in real NILM setups). Fewer appliances also mean fewer state combinations, so the estimates get faster and usually more accurate. Changing the selection restarts the filter, which settles again within a few readings.
+**Only the selected appliances:** the disaggregation models and lists only the appliances that are switched on with the chips below the house. Unchecking e.g. the TV removes it from the table, the chart and the model (the appliance inventory of the house is known, as in real NILM setups). Fewer appliances also mean fewer state combinations, so the estimates get faster and usually more accurate. Changing the selection recalculates the current day from 00:00 up to the current time with only the selected appliances (the day label shows *Recalculating… %*). Afterwards the smart meter curve, the house, the disaggregation, the chart and all key figures refer to the selected appliances only, and the simulation continues where it was. Several clicks in a row cause a single recalculation; earlier days are dropped, the meter reading keeps counting.
 
 **What the algorithm knows:** only `data/appliance-library.json`, a "data sheet" with the typical power states, their spread, typical durations and possible next states. It never sees the consumption curves in `data/devices.json`.
 
@@ -126,7 +126,7 @@ Next to the house and the smart meter, a panel estimates which appliances are ru
 - Per appliance: most likely state, probability of being on, estimated power ± uncertainty, and the actual power from the simulation (ground truth, shown in red when on/off was misclassified)
 - Residual = measured − sum of all estimates, so appliances + residual always add up to the reading. Positive: consumption that no appliance explains (shown in grey on top of the stacked chart). Negative: the appliances are estimated higher than what the smart meter measured, e.g. because a device runs below its nominal power or the model is unsure whether it is on.
 - Model confidence: probability of the most likely combination of states
-- On/off accuracy and energy accuracy (1 − Σ|estimate − actual| / (2 · Σ actual)) over the last 24 hours
+- On/off accuracy and energy accuracy (1 − Σ|estimate − actual| / (2 · Σ actual)) of the current day (since 00:00)
 - Stacked chart of the estimated contributions with the measured total as a dashed line; it follows the Live/Today switch of the smart meter chart
 
 **Zooming the time axis:** the smart meter chart and the *Estimated breakdown* share one time axis. Scroll with the mouse wheel over either chart to zoom in or out around the mouse position, drag to move the visible window, or use the − / + / Reset buttons above each chart. Zooming or moving one chart always does the same to the other. The labels adapt to the visible span (down to 10 minutes); switching between Live and Today resets the zoom.
