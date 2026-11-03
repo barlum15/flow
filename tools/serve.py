@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Local development server for flow that never lets the browser cache files.
+"""Local development server for Enerlyza that never lets the browser cache files.
 
 `python -m http.server` allows browsers to keep old copies of the JavaScript and
 CSS files, so changes only show up after a hard reload (or in a private

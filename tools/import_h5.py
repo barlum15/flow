@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Convert recorded appliance data (.h5) into the format the flow app reads.
+"""Convert recorded appliance data (.h5) into the format the Enerlyza app reads.
 
 The app runs in the browser and cannot read HDF5 itself, so this script turns
 the recordings into small JSON files: one file per local day with one value

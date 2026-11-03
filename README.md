@@ -1,6 +1,6 @@
-# flow
+# Enerlyza
 
-**flow** is an interactive visualization of electricity consumption in a household.
+**Enerlyza** is an interactive visualization of electricity consumption in a household.
 
 > Status: first prototype.
 
@@ -35,7 +35,7 @@ This shows how individual devices add up to the single total that a real smart m
 
 ## Tech Stack
 
-flow is a **web app** that runs in any browser and also locally on your own machine.
+Enerlyza is a **web app** that runs in any browser and also locally on your own machine.
 
 **Prototype (current):**
 
@@ -185,7 +185,7 @@ flow/
 
 The file names decide which device a file belongs to. Use the device IDs above, or keep the original names and map them with `--map original_name=device_id`. The files may also stay anywhere outside the project; just pass that path to the script.
 
-Run all commands in the project folder (`flow`). On Windows, use `py` (or `python`) and backslashes in paths, as shown in the Windows blocks.
+Run all commands in the project folder (`flow`, the repository name). On Windows, use `py` (or `python`) and backslashes in paths, as shown in the Windows blocks.
 
 **1. Install the requirements (once)**
 
