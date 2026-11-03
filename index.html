@@ -42,12 +42,32 @@
     </header>
 
     <main>
-      <section class="panel house-panel">
+      <section class="panel house-panel" data-panel="house">
+        <button class="zoom-btn" type="button" data-zoom-target="house" aria-pressed="false" aria-label="Zoom into the house" title="Zoom into the house">
+          <svg class="icon-expand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+          </svg>
+          <svg class="icon-overview" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" />
+            <rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" />
+          </svg>
+          <span class="zoom-text">Overview</span>
+        </button>
         <svg id="house" role="img" aria-label="Devices in the house connected to the smart meter"></svg>
         <div id="devices" class="device-list" aria-label="Switch devices on or off"></div>
       </section>
 
-      <section class="panel meter-panel">
+      <section class="panel meter-panel" data-panel="meter">
+        <button class="zoom-btn" type="button" data-zoom-target="meter" aria-pressed="false" aria-label="Zoom into the smart meter" title="Zoom into the smart meter">
+          <svg class="icon-expand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+          </svg>
+          <svg class="icon-overview" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" />
+            <rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" />
+          </svg>
+          <span class="zoom-text">Overview</span>
+        </button>
         <div class="meter-header">
           <h2>Smart meter</h2>
           <span id="live-badge" class="live-badge"><span class="live-dot"></span>Live</span>
@@ -88,7 +108,17 @@
         </div>
       </section>
 
-      <section id="nilm" class="panel nilm-panel" aria-labelledby="nilm-title">
+      <section id="nilm" class="panel nilm-panel" data-panel="nilm" aria-labelledby="nilm-title">
+        <button class="zoom-btn" type="button" data-zoom-target="nilm" aria-pressed="false" aria-label="Zoom into the load disaggregation" title="Zoom into the load disaggregation">
+          <svg class="icon-expand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+          </svg>
+          <svg class="icon-overview" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" />
+            <rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" />
+          </svg>
+          <span class="zoom-text">Overview</span>
+        </button>
         <div class="nilm-header">
           <div>
             <h2 id="nilm-title">

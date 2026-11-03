@@ -69,6 +69,7 @@ Then open http://localhost:8000 in your browser. A local web server is needed be
 | `src/chart.js` | Live and daily charts of the totals recorded by the smart meter |
 | `src/main.js` | Loads data and runs the animation loop |
 | `src/theme.js` | Light/dark mode switch |
+| `src/zoom.js` | Zoom into a single panel and back to the overview |
 | `src/disaggregation.js` | FHMM load disaggregation and accuracy metrics |
 | `src/nilm-view.js` | Load disaggregation panel (table and stacked chart) |
 | `src/style.css` | Styling (light and dark mode) |
@@ -119,6 +120,7 @@ On the simulated placeholder day the model reaches about 86 % on/off accuracy an
 ### Layout and Theme
 
 - The house and the smart meter panel sit side by side. The house panel sets the height and the smart meter panel matches it; on narrow screens they stack.
+- Every panel (house, smart meter, load disaggregation) has a zoom button in its top-right corner. It shows that panel alone in the whole window; the same button (now labelled *Overview*, with a small grid icon) or the Escape key returns to the overview. The simulation keeps running while zoomed.
 - A switch in the header toggles between light and dark mode. Without a saved choice the page follows the system setting; the choice is remembered in the browser.
 
 ## Devices

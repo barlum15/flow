@@ -4,8 +4,10 @@ import { drawChart } from "./chart.js";
 import { initThemeSwitch } from "./theme.js";
 import { FhmmDisaggregator, NilmMetrics } from "./disaggregation.js";
 import { NilmView } from "./nilm-view.js";
+import { initZoom } from "./zoom.js";
 
 initThemeSwitch(document.getElementById("theme-switch"));
+initZoom(document.querySelector("main"));
 
 const MAX_STEP_MINUTES = 1; // simulation resolution per step
 const LIVE_WINDOW_MINUTES = 60; // range of the live chart

@@ -178,10 +178,102 @@ main {
 }
 
 .panel {
+  position: relative;
   padding: 16px;
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 12px;
+}
+
+/* Zoom: every panel has a button in its top-right corner. */
+
+.zoom-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 7px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.zoom-btn:hover {
+  color: var(--text);
+  background: var(--bg);
+}
+
+.zoom-btn:focus-visible {
+  outline: 2px solid var(--energy);
+  outline-offset: 2px;
+}
+
+.zoom-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.zoom-btn .icon-overview,
+.zoom-btn .zoom-text,
+.zoomed .zoom-btn .icon-expand {
+  display: none;
+}
+
+.zoomed .zoom-btn .icon-overview,
+.zoomed .zoom-btn .zoom-text {
+  display: inline;
+}
+
+/* Keep headers clear of the button. */
+.meter-header,
+.nilm-header {
+  padding-right: 44px;
+}
+
+.zoomed .meter-header,
+.zoomed .nilm-header {
+  padding-right: 112px;
+}
+
+/* Zoomed view: only one panel, using the whole window below the header. */
+main[data-zoom] > .panel:not(.zoomed) {
+  display: none;
+}
+
+main[data-zoom] > .panel.zoomed {
+  grid-column: 1 / -1;
+}
+
+main[data-zoom="house"] .house-panel,
+main[data-zoom="meter"] .meter-panel {
+  height: calc(100vh - 69px - 32px);
+  min-height: 420px;
+}
+
+main[data-zoom="house"] .house-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+main[data-zoom="house"] #house {
+  flex: 1 1 0;
+  width: 100%;
+  min-height: 0;
+}
+
+main[data-zoom="meter"] .meter-panel {
+  contain: none;
+}
+
+main[data-zoom="nilm"] .nilm-chart-block .chart-wrap {
+  min-height: max(220px, calc(100vh - 69px - 32px - 220px));
 }
 
 #house,
