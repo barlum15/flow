@@ -394,6 +394,184 @@ main {
   }
 }
 
+/* Load disaggregation panel */
+
+.nilm-panel {
+  grid-column: 1 / -1;
+}
+
+.nilm-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.nilm-header h2 {
+  margin: 0;
+  font-size: 17px;
+}
+
+.nilm-subtitle {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.nilm-kpis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.kpi {
+  min-width: 120px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--bg);
+}
+
+.kpi .stat-label {
+  color: var(--muted);
+}
+
+.kpi-value {
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.nilm-body {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: 24px;
+}
+
+@media (max-width: 1000px) {
+  .nilm-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+.nilm-table {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.nilm-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.4fr) minmax(0, 1.3fr) minmax(0, 1.1fr) minmax(0, 0.7fr);
+  align-items: center;
+  gap: 8px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.nilm-head {
+  padding-top: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.nilm-head > div:nth-child(n + 4),
+.nilm-estimate,
+.nilm-actual {
+  text-align: right;
+}
+
+.nilm-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.swatch {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.nilm-state {
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nilm-row.is-on .nilm-state {
+  color: var(--text);
+}
+
+.nilm-prob {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.prob-bar {
+  flex: 1;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.prob-fill {
+  width: 0;
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.25s ease;
+}
+
+.prob-text {
+  flex: none;
+  width: 44px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.nilm-estimate,
+.nilm-actual {
+  white-space: nowrap;
+}
+
+.nilm-actual {
+  color: var(--muted);
+}
+
+.nilm-actual.miss {
+  color: var(--live);
+  font-weight: 600;
+}
+
+.nilm-rest {
+  border-bottom: 0;
+  color: var(--muted);
+}
+
+.nilm-rest .nilm-name {
+  font-weight: 400;
+}
+
+.nilm-chart-block {
+  display: flex;
+  flex-direction: column;
+  min-height: 260px;
+}
+
+.nilm-chart-block .chart-wrap {
+  min-height: 220px;
+}
+
 /* Theme switch */
 
 .theme-switch {

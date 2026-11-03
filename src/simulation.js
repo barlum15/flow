@@ -94,6 +94,13 @@ export class Simulation {
     this.devices = devices;
     this.meter = meter;
     this.time = startHour * 60; // minutes since day 1, 00:00
+
+    // Ground truth: average power of every device per minute. Only used to
+    // rate the disaggregation - the algorithm itself never sees it.
+    this.truth = new Map(); // minute -> { deviceId: watts }
+    this.truthSlot = null;
+    this.truthWattMinutes = {};
+    this.truthMinutes = 0;
   }
 
   get day() {
@@ -109,12 +116,30 @@ export class Simulation {
     return this.time - this.minuteOfDay;
   }
 
+  recordTruth(start, minutes) {
+    const slot = Math.floor(start);
+    if (this.truthSlot !== null && slot !== this.truthSlot && this.truthMinutes > 0) {
+      const powers = {};
+      for (const [id, wm] of Object.entries(this.truthWattMinutes)) powers[id] = wm / this.truthMinutes;
+      this.truth.set(this.truthSlot, powers);
+      this.truth.delete(this.truthSlot - 2 * MINUTES_PER_DAY);
+      this.truthWattMinutes = {};
+      this.truthMinutes = 0;
+    }
+    this.truthSlot = slot;
+    for (const device of this.devices) {
+      this.truthWattMinutes[device.id] = (this.truthWattMinutes[device.id] ?? 0) + device.power * minutes;
+    }
+    this.truthMinutes += minutes;
+  }
+
   /** Advances simulated time by the given number of minutes. */
   step(minutes) {
     const start = this.time;
     const hour = (start % MINUTES_PER_DAY) / 60;
     for (const device of this.devices) device.update(hour, this.meter);
     this.meter.commit(start, minutes);
+    this.recordTruth(start, minutes);
 
     const dayBefore = this.day;
     this.time += minutes;

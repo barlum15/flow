@@ -87,6 +87,57 @@
           </div>
         </div>
       </section>
+
+      <section id="nilm" class="panel nilm-panel" aria-labelledby="nilm-title">
+        <div class="nilm-header">
+          <div>
+            <h2 id="nilm-title">Load disaggregation</h2>
+            <p class="nilm-subtitle">
+              Factorial HMM with online forward filter · uses only the smart meter readings and an appliance library
+            </p>
+          </div>
+          <div class="nilm-kpis">
+            <div class="kpi" title="Probability of the most likely combination of appliance states">
+              <span class="stat-label">Model confidence</span>
+              <span id="nilm-confidence" class="kpi-value">–</span>
+            </div>
+            <div class="kpi" title="Share of appliance-minutes in the last 24 h where on/off was classified correctly">
+              <span class="stat-label">On/off accuracy · 24 h</span>
+              <span id="nilm-onoff" class="kpi-value">–</span>
+            </div>
+            <div class="kpi" title="1 − Σ|estimate − actual| / (2 · Σ actual) over the last 24 h">
+              <span class="stat-label">Energy accuracy · 24 h</span>
+              <span id="nilm-energy" class="kpi-value">–</span>
+            </div>
+            <div class="kpi" title="Average computing time per smart meter reading">
+              <span class="stat-label">Update time</span>
+              <span id="nilm-speed" class="kpi-value">–</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="nilm-body">
+          <div class="nilm-table" role="table" aria-label="Estimated state of every appliance">
+            <div class="nilm-row nilm-head" role="row">
+              <div>Appliance</div>
+              <div>Most likely state</div>
+              <div>P(on)</div>
+              <div>Estimate</div>
+              <div title="Ground truth from the simulation - not visible to the algorithm">Actual</div>
+            </div>
+            <div id="nilm-rows"></div>
+          </div>
+
+          <div class="nilm-chart-block">
+            <div class="chart-title">
+              Estimated breakdown <span class="chart-hint">stacked estimates · dashed line: measured total</span>
+            </div>
+            <div class="chart-wrap">
+              <canvas id="nilm-chart" class="chart" aria-label="Estimated power per appliance over time"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
     </main>
 
     <p id="error" class="error"></p>

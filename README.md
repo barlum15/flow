@@ -69,7 +69,10 @@ Then open http://localhost:8000 in your browser. A local web server is needed be
 | `src/chart.js` | Live and daily charts of the totals recorded by the smart meter |
 | `src/main.js` | Loads data and runs the animation loop |
 | `src/theme.js` | Light/dark mode switch |
+| `src/disaggregation.js` | FHMM load disaggregation and accuracy metrics |
+| `src/nilm-view.js` | Load disaggregation panel (table and stacked chart) |
 | `src/style.css` | Styling (light and dark mode) |
+| `data/appliance-library.json` | Appliance library for the disaggregation (power states, spread, durations, transitions) |
 | `data/devices.json` | Floor plan, smart meter position and devices (shape, plug position, hourly consumption curve with 24 values in watts) |
 
 ## How the Prototype Works
@@ -87,6 +90,29 @@ Then open http://localhost:8000 in your browser. A local web server is needed be
   - **Live**: scrolling view of the last 60 simulated minutes with the current value as the newest point
   - **Today**: the whole day from 00:00 to 24:00 at 1-minute resolution with a marker for the current time
 - The meter keeps the last two simulated days of records
+
+### Load Disaggregation
+
+Below the house and the smart meter, a panel estimates which appliances are running, using **only the smart meter readings** (one total value per minute). This is known as load disaggregation or NILM (non-intrusive load monitoring).
+
+**Algorithm: Factorial Hidden Markov Model (FHMM) with an online forward filter** (`src/disaggregation.js`)
+
+- Every appliance is a small Markov chain over its power states, e.g. washing machine: Off → Heating → Washing → Spinning.
+- The reading is modelled as the sum of the state powers of all appliances plus noise.
+- After every reading, one filter step updates the probability of every combination of appliance states (768 combinations here). From that it derives, per appliance, the probability of being on, the most likely state, and the estimated power with its uncertainty (±).
+- The transition step is applied per appliance, so an update takes well under a millisecond in the browser.
+- The spread of a state is treated as a persistent deviation from the nominal power, not as new noise every minute. Otherwise the model drifts towards whichever explanation has the narrowest spread.
+
+**What the algorithm knows:** only `data/appliance-library.json`, a "data sheet" with the typical power states, their spread, typical durations and possible next states. It never sees the consumption curves in `data/devices.json`.
+
+**Display**
+
+- Per appliance: most likely state, probability of being on, estimated power ± uncertainty, and the actual power from the simulation (ground truth, shown in red when on/off was misclassified)
+- Model confidence: probability of the most likely combination of states
+- On/off accuracy and energy accuracy (1 − Σ|estimate − actual| / (2 · Σ actual)) over the last 24 hours
+- Stacked chart of the estimated contributions with the measured total as a dashed line; it follows the Live/Today switch of the smart meter chart
+
+On the simulated day the model reaches about 84 % on/off accuracy and 80 % energy accuracy. The hardest moments are minutes in which several appliances switch at the same time, or in which different appliances have similar power (e.g. dishwasher 1800 W vs. washing machine 2000 W).
 
 ### Layout and Theme
 

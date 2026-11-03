@@ -1,0 +1,71 @@
+{
+  "description": "Typical power states of each appliance, like a manufacturer data sheet. The disaggregation algorithm only knows this library and the smart meter readings - never the consumption curves in devices.json.",
+  "noiseW": 40,
+  "outlierProbability": 0.01,
+  "appliances": [
+    {
+      "id": "fridge",
+      "name": "Fridge",
+      "color": "#4c8bf5",
+      "initial": { "Cooling": 0.9, "Off": 0.1 },
+      "states": [
+        { "name": "Off", "power": 0, "sd": 2, "duration": 20, "next": { "Cooling": 1 } },
+        { "name": "Cooling", "power": 105, "sd": 15, "duration": 1440, "next": { "Off": 1 } }
+      ]
+    },
+    {
+      "id": "lighting",
+      "name": "Lighting",
+      "color": "#e5a50a",
+      "states": [
+        { "name": "Off", "power": 0, "sd": 2, "duration": 240, "next": { "Night": 0.3, "Low": 0.3, "Medium": 0.3, "High": 0.1 } },
+        { "name": "Night", "power": 15, "sd": 8, "duration": 120, "next": { "Off": 0.5, "Low": 0.5 } },
+        { "name": "Low", "power": 50, "sd": 15, "duration": 60, "next": { "Off": 0.4, "Night": 0.2, "Medium": 0.4 } },
+        { "name": "Medium", "power": 175, "sd": 35, "duration": 90, "next": { "Low": 0.3, "High": 0.4, "Off": 0.3 } },
+        { "name": "High", "power": 280, "sd": 30, "duration": 120, "next": { "Medium": 0.6, "Off": 0.4 } }
+      ]
+    },
+    {
+      "id": "tv",
+      "name": "TV",
+      "color": "#9b6ef3",
+      "states": [
+        { "name": "Off", "power": 0, "sd": 2, "duration": 600, "next": { "Standby": 0.3, "On": 0.7 } },
+        { "name": "Standby", "power": 40, "sd": 10, "duration": 60, "next": { "Off": 0.5, "On": 0.5 } },
+        { "name": "On", "power": 100, "sd": 25, "duration": 180, "next": { "Off": 0.7, "Standby": 0.3 } }
+      ]
+    },
+    {
+      "id": "washing-machine",
+      "name": "Washing machine",
+      "color": "#e36fa8",
+      "states": [
+        { "name": "Off", "power": 0, "sd": 2, "duration": 1440, "next": { "Heating": 1 } },
+        { "name": "Heating", "power": 2000, "sd": 100, "duration": 60, "next": { "Washing": 0.8, "Off": 0.2 } },
+        { "name": "Washing", "power": 600, "sd": 80, "duration": 60, "next": { "Spinning": 0.8, "Off": 0.2 } },
+        { "name": "Spinning", "power": 400, "sd": 80, "duration": 60, "next": { "Off": 1 } }
+      ]
+    },
+    {
+      "id": "dishwasher",
+      "name": "Dishwasher",
+      "color": "#2bb3a3",
+      "states": [
+        { "name": "Off", "power": 0, "sd": 2, "duration": 1440, "next": { "Heating": 1 } },
+        { "name": "Heating", "power": 1800, "sd": 100, "duration": 60, "next": { "Washing": 0.8, "Off": 0.2 } },
+        { "name": "Washing", "power": 900, "sd": 100, "duration": 60, "next": { "Drying": 0.8, "Off": 0.2 } },
+        { "name": "Drying", "power": 200, "sd": 50, "duration": 60, "next": { "Off": 1 } }
+      ]
+    },
+    {
+      "id": "oven",
+      "name": "Oven",
+      "color": "#e8684a",
+      "states": [
+        { "name": "Off", "power": 0, "sd": 2, "duration": 720, "next": { "Low": 0.3, "High": 0.7 } },
+        { "name": "Low", "power": 1500, "sd": 150, "duration": 60, "next": { "High": 0.5, "Off": 0.5 } },
+        { "name": "High", "power": 2350, "sd": 200, "duration": 60, "next": { "Low": 0.3, "Off": 0.7 } }
+      ]
+    }
+  ]
+}

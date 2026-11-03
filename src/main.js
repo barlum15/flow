@@ -2,19 +2,26 @@ import { Device, SmartMeter, Simulation, MINUTES_PER_DAY } from "./simulation.js
 import { HouseView } from "./view.js";
 import { drawChart } from "./chart.js";
 import { initThemeSwitch } from "./theme.js";
+import { FhmmDisaggregator, NilmMetrics } from "./disaggregation.js";
+import { NilmView } from "./nilm-view.js";
 
 initThemeSwitch(document.getElementById("theme-switch"));
 
 const MAX_STEP_MINUTES = 1; // simulation resolution per step
 const LIVE_WINDOW_MINUTES = 60; // range of the live chart
 
+async function fetchJson(url) {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`Could not load ${url} (${response.status})`);
+  return response.json();
+}
+
 async function loadData() {
-  const response = await fetch("data/devices.json");
-  if (!response.ok) throw new Error(`Could not load devices (${response.status})`);
-  const data = await response.json();
+  const [data, library] = await Promise.all([fetchJson("data/devices.json"), fetchJson("data/appliance-library.json")]);
   return {
     devices: data.devices.map((d) => new Device(d)),
     layout: { house: data.house, meter: data.meter },
+    library,
   };
 }
 
@@ -48,7 +55,7 @@ function buildDeviceList(container, devices) {
 }
 
 async function start() {
-  const { devices, layout } = await loadData();
+  const { devices, layout, library } = await loadData();
   const meter = new SmartMeter();
   const sim = new Simulation(devices, meter);
   const view = new HouseView(document.getElementById("house"), devices, layout);
@@ -58,6 +65,29 @@ async function start() {
   const speedSelect = $("speed");
 
   buildDeviceList($("devices"), devices);
+
+  // Load disaggregation: fed with every new smart meter record (one per minute).
+  const nilm = new FhmmDisaggregator(library);
+  const metrics = new NilmMetrics();
+  const nilmView = new NilmView($("nilm"), nilm.appliances);
+  let lastFedMinute = -Infinity;
+
+  function feedDisaggregation() {
+    const records = meter.records;
+    let i = records.length;
+    while (i > 0 && records[i - 1].t > lastFedMinute) i--;
+    let latest = null;
+    for (; i < records.length; i++) {
+      const record = records[i];
+      const result = nilm.update(record.watts);
+      const truth = sim.truth.get(record.t);
+      if (truth) metrics.add(record.t, result, truth);
+      nilmView.push(record.t, result);
+      lastFedMinute = record.t;
+      latest = { result, truth };
+    }
+    if (latest) nilmView.update(latest.result, latest.truth, metrics, nilm.lastUpdateMs);
+  }
 
   let playing = true;
   playButton.addEventListener("click", () => {
@@ -96,6 +126,7 @@ async function start() {
       }
     }
 
+    feedDisaggregation();
     view.render(playing ? dt : 0, meter.total);
 
     setText($("clock"), formatTime(sim.minuteOfDay));
@@ -106,12 +137,12 @@ async function start() {
     setText($("reading"), formatReading(meter.readingKWh));
 
     const live = { t: sim.time, watts: meter.total };
-    drawChart(
-      $("chart"),
+    const range =
       chartRange === "live"
-        ? { records: meter.records, from: sim.time - LIVE_WINDOW_MINUTES, to: sim.time, tickEvery: 15, live }
-        : { records: meter.records, from: sim.dayStart, to: sim.dayStart + MINUTES_PER_DAY, tickEvery: 180, live, now: sim.time },
-    );
+        ? { from: sim.time - LIVE_WINDOW_MINUTES, to: sim.time, tickEvery: 15 }
+        : { from: sim.dayStart, to: sim.dayStart + MINUTES_PER_DAY, tickEvery: 180 };
+    drawChart($("chart"), { records: meter.records, live, now: chartRange === "day" ? sim.time : undefined, ...range });
+    nilmView.draw(range);
 
     requestAnimationFrame(frame);
   }

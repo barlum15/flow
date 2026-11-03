@@ -1,20 +1,20 @@
 // Canvas line charts of the totals recorded by the smart meter.
 
-const MIN_GRID_SPACING = 36; // px between horizontal grid lines
+export const MIN_GRID_SPACING = 36; // px between horizontal grid lines
 
 /** Rounds a value up to a "nice" step (1, 2 or 5 times a power of ten). */
-function niceStep(value) {
+export function niceStep(value) {
   const exp = 10 ** Math.floor(Math.log10(value));
   for (const m of [1, 2, 5, 10]) if (value <= m * exp) return m * exp;
   return 10 * exp;
 }
 
-function formatClock(t) {
+export function formatClock(t) {
   const m = ((Math.round(t) % 1440) + 1440) % 1440;
   return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
 }
 
-function formatWatts(w) {
+export function formatWatts(w) {
   return w >= 1000 ? `${(w / 1000).toFixed(w % 1000 === 0 ? 0 : 1)} kW` : `${Math.round(w)} W`;
 }
 
