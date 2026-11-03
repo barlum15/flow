@@ -13,7 +13,8 @@ const Z_SCALE = 38; // screen height of 1 m of elevation
 
 const LANE_START = 1.4; // distance of the first cable lane from the wall (m)
 const LANE_GAP = 0.12; // distance between neighbouring cable lanes (m)
-const METER_LANE_START = 0.15; // where the first cable leaves the meter (m)
+const METER_LANE_START = 0.12; // where the first cable leaves the meter (m)
+const METER_LANE_GAP = 0.09; // distance between cables leaving the meter (m)
 
 const BALLS_PER_WATT_SECOND = 0.004; // spawn rate: 1000 W -> 4 balls per second
 const BALL_SPEED = 160; // px per real second
@@ -99,7 +100,7 @@ function routeCables(devices, meterBox) {
 
   ordered.forEach((device, i) => {
     const lane = LANE_START + i * LANE_GAP;
-    const start = meterY0 + METER_LANE_START + i * LANE_GAP;
+    const start = meterY0 + METER_LANE_START + i * METER_LANE_GAP;
     const { x: px, y: py } = device.plug;
 
     const route = [
@@ -185,8 +186,8 @@ export class HouseView {
         if (p.y < top.y) top = p;
       }
 
-      const label = el("g", { class: "device-label", transform: `translate(${top.x} ${top.y - 18})` }, labelLayer);
-      el("text", { class: "device-name", y: -22 }, label).textContent = device.name;
+      const label = el("g", { class: "device-label", transform: `translate(${top.x} ${top.y - 14})` }, labelLayer);
+      el("text", { class: "device-name", y: -18 }, label).textContent = device.name;
       cable.label = el("text", { class: "device-watts", y: 0 }, label);
       cable.label.textContent = "0 W"; // reserve space for label placement
       cable.group = group;

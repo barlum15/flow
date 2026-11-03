@@ -6,7 +6,7 @@
 
 ## Idea
 
-A house contains several electrical devices (e.g. fridge, washing machine, oven, TV, lighting). Every device is connected to a central **smart meter** by a cable.
+A house contains several electrical devices (AHU, coffee maker, dishwasher, electric stove, fridge, tumble dryer, washing machine, TV, lighting). Every device is connected to a central **smart meter** by a cable.
 
 - **Devices** have a stored **consumption curve** (power over time) in a database in the background.
 - When a device needs electricity, it **requests** that consumption from the smart meter.
@@ -73,7 +73,7 @@ Then open http://localhost:8000 in your browser. A local web server is needed be
 | `src/nilm-view.js` | Load disaggregation panel (table and stacked chart) |
 | `src/style.css` | Styling (light and dark mode) |
 | `data/appliance-library.json` | Appliance library for the disaggregation (power states, spread, durations, transitions) |
-| `data/devices.json` | Floor plan, smart meter position and devices (shape, plug position, hourly consumption curve with 24 values in watts) |
+| `data/devices.json` | Floor plan, smart meter position and devices (shape, plug position, daily consumption curve in watts) |
 
 ## How the Prototype Works
 
@@ -99,8 +99,8 @@ Below the house and the smart meter, a panel estimates which appliances are runn
 
 - Every appliance is a small Markov chain over its power states, e.g. washing machine: Off → Heating → Washing → Spinning.
 - The reading is modelled as the sum of the state powers of all appliances plus noise.
-- After every reading, one filter step updates the probability of every combination of appliance states (768 combinations here). From that it derives, per appliance, the probability of being on, the most likely state, and the estimated power with its uncertainty (±).
-- The transition step is applied per appliance, so an update takes well under a millisecond in the browser.
+- After every reading, one filter step updates the probability of every combination of appliance states (38,880 combinations with the nine appliances). From that it derives, per appliance, the probability of being on, the most likely state, and the estimated power with its uncertainty (±).
+- The transition step is applied per appliance, so an update takes about 1 ms in the browser.
 - The spread of a state is treated as a persistent deviation from the nominal power, not as new noise every minute. Otherwise the model drifts towards whichever explanation has the narrowest spread.
 
 **What the algorithm knows:** only `data/appliance-library.json`, a "data sheet" with the typical power states, their spread, typical durations and possible next states. It never sees the consumption curves in `data/devices.json`.
@@ -114,12 +114,28 @@ Below the house and the smart meter, a panel estimates which appliances are runn
 
 **Inspecting a point in time:** click into the *Estimated breakdown* chart to look at a specific minute. The whole program pauses, the table shows the estimates and the actual values of that minute, and both charts mark it. While paused, the arrow keys ← / → step through the minutes. Press **Play** to continue; the table then returns to the live values.
 
-On the simulated day the model reaches about 84 % on/off accuracy and 80 % energy accuracy. The hardest moments are minutes in which several appliances switch at the same time, or in which different appliances have similar power (e.g. dishwasher 1800 W vs. washing machine 2000 W).
+On the simulated placeholder day the model reaches about 86 % on/off accuracy and 64 % energy accuracy. The hardest moments are minutes in which several appliances switch at the same time, or in which different appliances have similar power (e.g. electric stove ~2350 W vs. tumble dryer ~2400 W, dishwasher 1800 W vs. washing machine 2000 W). In such cases the panel splits the probability between the candidates instead of guessing.
 
 ### Layout and Theme
 
 - The house and the smart meter panel sit side by side. The house panel sets the height and the smart meter panel matches it; on narrow screens they stack.
 - A switch in the header toggles between light and dark mode. Without a saved choice the page follows the system setting; the choice is remembered in the browser.
+
+## Devices
+
+| ID | Name | Room |
+| --- | --- | --- |
+| `ahu` | AHU (air handling unit / ventilation) | Utility room |
+| `coffee_maker` | Coffee maker | Kitchen |
+| `dishwasher` | Dishwasher | Kitchen |
+| `electric_stove` | Electric stove | Kitchen |
+| `fridge` | Fridge | Kitchen |
+| `tumble_dryer` | Tumble dryer | Utility room |
+| `washing_machine` | Washing machine | Utility room |
+| `tv` | TV | Living room |
+| `lighting` | Lighting | Living room |
+
+The IDs are the same in `data/devices.json` and `data/appliance-library.json`. The consumption curves are placeholders until real measurements are imported. A curve splits the day into equal steps, so it can have any resolution: 24 values (hourly), 96 (every 15 minutes) or 1440 (every minute).
 
 ## Isometric View
 

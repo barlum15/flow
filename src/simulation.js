@@ -6,10 +6,14 @@
 export const MINUTES_PER_DAY = 1440;
 const HOURS_PER_DAY = 24;
 
-/** Returns the power (watts) of an hourly curve (24 values) at a given hour. */
+/**
+ * Returns the power (watts) of a daily curve at a given hour. The curve
+ * splits the day into equal steps: 24 values = hourly, 96 = every 15 minutes,
+ * 1440 = every minute.
+ */
 export function sampleCurve(curve, hour) {
   const h = ((hour % HOURS_PER_DAY) + HOURS_PER_DAY) % HOURS_PER_DAY;
-  return curve[Math.floor(h)];
+  return curve[Math.min(curve.length - 1, Math.floor((h / HOURS_PER_DAY) * curve.length))];
 }
 
 export class Device {

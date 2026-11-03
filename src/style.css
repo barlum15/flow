@@ -752,12 +752,12 @@ main {
 }
 
 .device-name {
-  font-size: 20px;
+  font-size: 17px;
   font-weight: 600;
 }
 
 .device-label .device-watts {
-  font-size: 18px;
+  font-size: 15px;
   fill: var(--muted);
   font-variant-numeric: tabular-nums;
 }
