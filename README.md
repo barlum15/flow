@@ -106,7 +106,7 @@ Then open http://localhost:8000 in your browser. A local web server is needed be
 
 ### Load Disaggregation
 
-Below the house and the smart meter, a panel estimates which appliances are running, using **only the smart meter readings** (one total value per minute). This is known as load disaggregation or NILM (non-intrusive load monitoring).
+Next to the house and the smart meter, a panel estimates which appliances are running, using **only the smart meter readings** (one total value per minute). This is known as load disaggregation or NILM (non-intrusive load monitoring).
 
 **Algorithm: Factorial Hidden Markov Model (FHMM) with an online forward filter** (`src/disaggregation.js`)
 
@@ -133,7 +133,7 @@ On the simulated placeholder day the model reaches about 86 % on/off accuracy an
 
 ### Layout and Theme
 
-- The house and the smart meter panel sit side by side. The house panel sets the height and the smart meter panel matches it; on narrow screens they stack.
+- Left column: the house, with the smart meter below it (fixed height of 440 px). Right column: the load disaggregation over the full height, with the table on top and the chart below. On narrow screens all three panels stack. When zoomed, the load disaggregation shows table and chart side by side.
 - Every panel (house, smart meter, load disaggregation) has a zoom button in its top-right corner. It shows that panel alone in the whole window; the same button (now labelled *Overview*, with a small grid icon) or the Escape key returns to the overview. The simulation keeps running while zoomed.
 - A switch in the header toggles between light and dark mode. Without a saved choice the page follows the system setting; the choice is remembered in the browser.
 

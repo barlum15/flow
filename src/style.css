@@ -146,13 +146,30 @@ select {
   cursor: pointer;
 }
 
-/* Both panels share one row. The house panel sets the row height. */
+/* Layout: house and smart meter on the left, one below the other; the load
+   disaggregation fills the right column (table on top, chart below). */
 main {
   display: grid;
   grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  grid-template-rows: auto auto;
   align-items: stretch;
   gap: 16px;
   padding: 16px 24px;
+}
+
+.house-panel {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.meter-panel {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.nilm-panel {
+  grid-column: 2;
+  grid-row: 1 / span 2;
 }
 
 .house-panel,
@@ -162,18 +179,29 @@ main {
   min-height: 0;
 }
 
-@media (min-width: 1001px) {
-  /* The meter panel's own content does not size the row, so it takes
-     exactly the height of the house panel; its charts fill the rest. */
-  .meter-panel {
-    contain: size;
-  }
+.meter-panel {
+  height: 440px;
 }
 
 @media (max-width: 1000px) {
   main {
     grid-template-columns: 1fr;
     padding: 16px;
+  }
+
+  .house-panel,
+  .meter-panel,
+  .nilm-panel {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .meter-panel {
+    height: auto;
+  }
+
+  .meter-panel .chart-block {
+    flex: none;
   }
 }
 
@@ -249,10 +277,12 @@ main[data-zoom] > .panel:not(.zoomed) {
 
 main[data-zoom] > .panel.zoomed {
   grid-column: 1 / -1;
+  grid-row: 1 / -1;
 }
 
 main[data-zoom="house"] .house-panel,
-main[data-zoom="meter"] .meter-panel {
+main[data-zoom="meter"] .meter-panel,
+main[data-zoom="nilm"] .nilm-panel {
   height: calc(100vh - 69px - 32px);
   min-height: 420px;
 }
@@ -268,12 +298,10 @@ main[data-zoom="house"] #house {
   min-height: 0;
 }
 
-main[data-zoom="meter"] .meter-panel {
-  contain: none;
-}
-
-main[data-zoom="nilm"] .nilm-chart-block .chart-wrap {
-  min-height: max(220px, calc(100vh - 69px - 32px - 220px));
+main[data-zoom="nilm"] .nilm-body {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  align-items: stretch;
 }
 
 #house,
@@ -492,7 +520,9 @@ main[data-zoom="nilm"] .nilm-chart-block .chart-wrap {
 /* Load disaggregation panel */
 
 .nilm-panel {
-  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .nilm-header {
@@ -538,15 +568,18 @@ main[data-zoom="nilm"] .nilm-chart-block .chart-wrap {
   font-variant-numeric: tabular-nums;
 }
 
+/* Table on top, chart below; the chart takes the remaining height. */
 .nilm-body {
-  display: grid;
-  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-  gap: 24px;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-height: 0;
 }
 
 @media (max-width: 1000px) {
-  .nilm-body {
-    grid-template-columns: 1fr;
+  main[data-zoom="nilm"] .nilm-body {
+    display: flex;
   }
 }
 
@@ -697,6 +730,7 @@ main[data-zoom="nilm"] .nilm-chart-block .chart-wrap {
 }
 
 .nilm-chart-block {
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   min-height: 260px;
