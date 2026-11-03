@@ -92,7 +92,8 @@ function faceGroup(parent, [, , , x1, y1], face) {
 
 /**
  * Draws flat details on the faces of a device, e.g. the door of a washing
- * machine ({ shape: "circle", u, v, r }) or a seam ({ shape: "line", u1, v1, u2, v2 }).
+ * machine ({ shape: "circle", u, v, r }), an oven window ({ shape: "rect", u, v, w, h },
+ * v is the lower edge) or a seam ({ shape: "line", u1, v1, u2, v2 }).
  * Coordinates are world meters within the face of the referenced box.
  */
 function drawDetails(parent, device) {
@@ -102,6 +103,8 @@ function drawDetails(parent, device) {
     const cls = `detail ${detail.className ?? ""}`.trim();
     if (detail.shape === "circle") {
       el("circle", { class: cls, cx: detail.u, cy: detail.v, r: detail.r, "vector-effect": "non-scaling-stroke" }, g);
+    } else if (detail.shape === "rect") {
+      el("rect", { class: cls, x: detail.u, y: detail.v, width: detail.w, height: detail.h, "vector-effect": "non-scaling-stroke" }, g);
     } else if (detail.shape === "line") {
       el("line", { class: cls, x1: detail.u1, y1: detail.v1, x2: detail.u2, y2: detail.v2, "vector-effect": "non-scaling-stroke" }, g);
     }

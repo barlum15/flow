@@ -705,6 +705,24 @@ main {
   stroke-width: 1;
 }
 
+.detail.oven-window {
+  fill: #23272e;
+  stroke: #12151a;
+  stroke-width: 1;
+  transition: fill 0.3s;
+}
+
+/* The oven window glows while the stove is on. */
+.device.active .detail.oven-window {
+  fill: #e8763a;
+}
+
+.detail.handle {
+  stroke: #c9ced6;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
 .detail.seam {
   stroke: rgba(0, 0, 0, 0.35);
   stroke-width: 1.5;
