@@ -148,6 +148,30 @@ The app can replay real appliance measurements instead of the mock curves. It wa
 
 > **The recorded data must never be committed or uploaded.** The import writes to `data/real/`, which is listed in `.gitignore` together with all `*.h5` files. Everyone converts the data locally.
 
+**Folder structure**
+
+```
+flow/
+├── data/
+│   ├── raw/                     ← your original .h5 files (never committed)
+│   │   └── building_1/
+│   │       ├── ahu.h5
+│   │       ├── coffee_maker.h5
+│   │       ├── dishwasher.h5
+│   │       ├── electric_stove.h5
+│   │       ├── fridge.h5
+│   │       ├── tumble_dryer.h5
+│   │       └── washing_machine.h5
+│   ├── real/                    ← written by the import script (never committed)
+│   │   ├── manifest.json
+│   │   └── days/2019-01-01.json …
+│   ├── devices.json             ← floor plan and mock curves (in git)
+│   └── appliance-library.json   ← appliance library (in git)
+└── tools/import_h5.py
+```
+
+The file names decide which device a file belongs to. Use the device IDs above, or keep the original names and map them with `--map original_name=device_id`. The files may also stay anywhere outside the project; just pass that path to the script.
+
 **1. Install the requirements (once)**
 
 ```bash
@@ -157,7 +181,7 @@ pip install pandas tables h5py
 **2. Look at the files**
 
 ```bash
-python tools/import_h5.py --inspect /path/to/building_1
+python tools/import_h5.py --inspect data/raw/building_1
 ```
 
 This lists every file with its HDF key, columns, chosen power column(s), first timestamp and sampling interval, and the device ID it maps to.
@@ -165,7 +189,7 @@ This lists every file with its HDF key, columns, chosen power column(s), first t
 **3. Convert**
 
 ```bash
-python tools/import_h5.py /path/to/building_1 --label "SmartNIALMeter building 1"
+python tools/import_h5.py data/raw/building_1 --label "SmartNIALMeter building 1"
 ```
 
 - Per-phase active power columns (e.g. `active power L1/L2/L3`) are summed; reactive and apparent power are ignored. Use `--column` to choose columns yourself.

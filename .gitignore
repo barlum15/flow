@@ -1,5 +1,7 @@
 # Recorded consumption data is NOT ours to publish. It must never be committed.
-# The import script writes it to data/real/, which stays local only.
+# Put the original files into data/raw/; the import script writes data/real/.
+# Both folders stay local only.
+data/raw/
 data/real/
 *.h5
 *.hdf5
