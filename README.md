@@ -87,7 +87,7 @@ Then open http://localhost:8000 in your browser. A local web server is needed be
 ### Smart Meter Display
 
 - **Current power** as a large live value, plus energy today, peak today and the meter reading (total kWh since start, like a real counter)
-- **Chart** with two ranges, switchable above the chart:
+- **Chart** with two ranges, switchable above the chart (default: Today):
   - **Live**: scrolling view of the last 60 simulated minutes with the current value as the newest point
   - **Today**: the whole day from 00:00 to 24:00 at 1-minute resolution with a marker for the current time
 - The meter keeps the last two simulated days of records

@@ -106,7 +106,7 @@ async function start() {
     live: "last 60 min · 1-minute resolution",
     day: "00:00 – 24:00 · 1-minute resolution",
   };
-  let chartRange = "live";
+  let chartRange = "day"; // default view: the whole day
   const tabs = document.querySelectorAll(".segmented button");
   for (const tab of tabs) {
     tab.addEventListener("click", () => {
