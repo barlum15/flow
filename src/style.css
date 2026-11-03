@@ -117,6 +117,14 @@ main {
   }
 }
 
+#house,
+.stat-value,
+.clock,
+.pill {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 #house {
   width: 100%;
   height: auto;
@@ -257,6 +265,11 @@ aside section {
 .device.disabled,
 .device-label.disabled {
   opacity: 0.35;
+}
+
+.device-label text,
+.room-label {
+  pointer-events: none;
 }
 
 .device-label text {

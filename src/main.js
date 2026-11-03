@@ -14,6 +14,10 @@ async function loadData() {
   };
 }
 
+function setText(node, text) {
+  if (node.textContent !== text) node.textContent = text;
+}
+
 function formatTime(minuteOfDay) {
   const h = Math.floor(minuteOfDay / 60);
   const m = Math.floor(minuteOfDay % 60);
@@ -72,10 +76,10 @@ async function start() {
     }
 
     view.render(playing ? dt : 0, meter.total);
-    clock.textContent = formatTime(sim.minuteOfDay);
-    day.textContent = `Day ${sim.day}`;
-    total.textContent = `${Math.round(meter.total)} W`;
-    energy.textContent = `${meter.energyKWh.toFixed(2)} kWh`;
+    setText(clock, formatTime(sim.minuteOfDay));
+    setText(day, `Day ${sim.day}`);
+    setText(total, `${Math.round(meter.total)} W`);
+    setText(energy, `${meter.energyKWh.toFixed(2)} kWh`);
     drawChart(chart, meter.records, sim.minuteOfDay);
 
     requestAnimationFrame(frame);

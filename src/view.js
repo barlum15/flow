@@ -34,6 +34,11 @@ function el(name, attrs = {}, parent) {
   return node;
 }
 
+/** Updates text only when it changed, so the DOM is not rewritten every frame. */
+function setText(node, text) {
+  if (node.textContent !== text) node.textContent = text;
+}
+
 function points(list) {
   return list.map(([x, y, z]) => {
     const p = iso(x, y, z);
@@ -248,7 +253,7 @@ export class HouseView {
       cable.group.classList.toggle("active", active);
       cable.group.classList.toggle("disabled", !device.enabled);
       cable.labelGroup.classList.toggle("disabled", !device.enabled);
-      cable.label.textContent = `${Math.round(device.power)} W`;
+      setText(cable.label, `${Math.round(device.power)} W`);
 
       // Spawn balls at the smart meter proportional to the current power draw.
       cable.spawnBudget += device.power * BALLS_PER_WATT_SECOND * dtSeconds;
@@ -276,6 +281,6 @@ export class HouseView {
     }
 
     this.meterGroup.classList.toggle("active", meterTotal > 0);
-    this.meterLabel.textContent = `${Math.round(meterTotal)} W`;
+    setText(this.meterLabel, `${Math.round(meterTotal)} W`);
   }
 }
