@@ -279,19 +279,37 @@ export class HouseView {
   }
 
   /** Called every animation frame with the elapsed real time in seconds. */
-  render(dtSeconds, meterTotal) {
+  /**
+   * Called every animation frame with the elapsed real time in seconds.
+   * @param {number} dtSeconds
+   * @param {number} meterTotal
+   * @param {{ key: number, powers: Record<string, number> }} [snapshot] values of a
+   *   selected minute: the house then shows them, with the balls frozen
+   */
+  render(dtSeconds, meterTotal, snapshot) {
+    const snapshotChanged = snapshot && snapshot.key !== this.snapshotKey;
+    this.snapshotKey = snapshot ? snapshot.key : null;
+
     for (const cable of this.cables.values()) {
       const { device } = cable;
-      const active = device.power > 0;
+      const power = snapshot ? (snapshot.powers?.[device.id] ?? 0) : device.power;
+      const active = power > 0;
 
       cable.path.classList.toggle("active", active);
       cable.group.classList.toggle("active", active);
       cable.group.classList.toggle("disabled", !device.enabled);
       cable.labelGroup.classList.toggle("disabled", !device.enabled);
-      setText(cable.label, `${Math.round(device.power)} W`);
+      setText(cable.label, `${Math.round(power)} W`);
+
+      if (snapshot) {
+        // Frozen picture of the selected minute: as many balls as would be on
+        // the cable at that power, spread evenly and not moving.
+        if (snapshotChanged) this.freezeBalls(cable, power);
+        continue;
+      }
 
       // Spawn balls at the smart meter proportional to the current power draw.
-      cable.spawnBudget += device.power * BALLS_PER_WATT_SECOND * dtSeconds;
+      cable.spawnBudget += power * BALLS_PER_WATT_SECOND * dtSeconds;
       while (cable.spawnBudget >= 1) {
         cable.spawnBudget -= 1;
         if (cable.balls.length < MAX_BALLS_PER_CABLE) {
@@ -308,14 +326,32 @@ export class HouseView {
           ball.node.remove();
           return false;
         }
-        const p = cable.path.getPointAtLength(ball.distance);
-        ball.node.setAttribute("cx", p.x);
-        ball.node.setAttribute("cy", p.y);
+        this.placeBall(cable, ball);
         return true;
       });
     }
 
     this.meterGroup.classList.toggle("active", meterTotal > 0);
     setText(this.meterLabel, `${Math.round(meterTotal)} W`);
+  }
+
+  placeBall(cable, ball) {
+    const p = cable.path.getPointAtLength(ball.distance);
+    ball.node.setAttribute("cx", p.x);
+    ball.node.setAttribute("cy", p.y);
+  }
+
+  /** Replaces the balls of a cable by the steady-state amount for `power`, evenly spaced. */
+  freezeBalls(cable, power) {
+    for (const ball of cable.balls) ball.node.remove();
+    cable.balls = [];
+    cable.spawnBudget = 0;
+    const travelSeconds = cable.length / BALL_SPEED;
+    const count = Math.min(MAX_BALLS_PER_CABLE, Math.round(power * BALLS_PER_WATT_SECOND * travelSeconds));
+    for (let i = 0; i < count; i++) {
+      const ball = { node: el("circle", { class: "ball", r: 3.5 }, this.ballLayer), distance: ((i + 0.5) / count) * cable.length };
+      this.placeBall(cable, ball);
+      cable.balls.push(ball);
+    }
   }
 }

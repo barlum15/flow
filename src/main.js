@@ -234,7 +234,17 @@ async function start() {
     }
 
     feedDisaggregation();
-    view.render(playing && !waiting ? dt : 0, meter.total);
+
+    // While a minute is selected, the house shows the actual device power of
+    // that minute (frozen); otherwise the live values.
+    const selected = nilmView.selectedT !== null ? nilmView.entryAt(nilmView.selectedT) : null;
+    if (selected) {
+      view.render(0, selected.total, { key: selected.t, powers: selected.truth });
+    } else {
+      view.render(playing && !waiting ? dt : 0, meter.total);
+    }
+    $("house-snapshot").hidden = !selected;
+    if (selected) setText($("house-snapshot-time"), formatTime(selected.t % MINUTES_PER_DAY));
 
     const dayIndex = sim.day - 1;
     setText($("clock"), formatTime(sim.minuteOfDay));
@@ -242,7 +252,6 @@ async function start() {
     setText($("day"), waiting ? "Loading…" : dayText);
     if (source.kind === "recorded" && document.activeElement !== dateJump) dateJump.value = source.dateOf(dayIndex);
     // While a minute is selected, the readout shows the power of that minute.
-    const selected = nilmView.selectedT !== null ? nilmView.entryAt(nilmView.selectedT) : null;
     setText($("power-label"), selected ? `Power at ${formatTime(selected.t % MINUTES_PER_DAY)}` : "Current power");
     setText($("total"), Math.round(selected ? selected.total : meter.total).toLocaleString("en-US"));
     setText($("energy"), meter.energyKWh.toFixed(2));

@@ -684,6 +684,14 @@ main[data-zoom="nilm"] .nilm-chart-block .chart-wrap {
   vertical-align: middle;
 }
 
+.house-snapshot {
+  position: absolute;
+  top: 14px;
+  left: 16px;
+  z-index: 2;
+  margin: 0;
+}
+
 .snapshot-badge[hidden] {
   display: none;
 }
