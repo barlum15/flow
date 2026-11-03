@@ -90,7 +90,7 @@
 
         <div class="readout">
           <div class="readout-main">
-            <span class="stat-label">Current power</span>
+            <span id="power-label" class="stat-label">Current power</span>
             <span class="big-value"><span id="total">0</span><span class="unit">W</span></span>
           </div>
           <div class="readout-grid">
@@ -118,7 +118,12 @@
             <span id="chart-hint" class="chart-hint">00:00 – 24:00 · 1-minute resolution</span>
           </div>
           <div class="chart-wrap">
-            <canvas id="chart" class="chart" aria-label="Total power recorded by the smart meter"></canvas>
+            <canvas
+              id="chart"
+              class="chart nilm-canvas"
+              tabindex="0"
+              aria-label="Total power recorded by the smart meter. Click to inspect a minute, then use the arrow keys to step."
+            ></canvas>
           </div>
         </div>
       </section>

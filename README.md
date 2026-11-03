@@ -127,7 +127,7 @@ Below the house and the smart meter, a panel estimates which appliances are runn
 - On/off accuracy and energy accuracy (1 − Σ|estimate − actual| / (2 · Σ actual)) over the last 24 hours
 - Stacked chart of the estimated contributions with the measured total as a dashed line; it follows the Live/Today switch of the smart meter chart
 
-**Inspecting a point in time:** click into the *Estimated breakdown* chart to look at a specific minute. The whole program pauses, the table shows the estimates and the actual values of that minute, and both charts mark it. While paused, the arrow keys ← / → step through the minutes. Press **Play** to continue; the table then returns to the live values.
+**Inspecting a point in time:** click into the *Estimated breakdown* chart or into the smart meter chart to look at a specific minute. Both charts share the selection, and the smart meter readout then shows the power of that minute (*Power at 09:29* instead of *Current power*). The whole program pauses, the table shows the estimates and the actual values of that minute, and both charts mark it. While paused, the arrow keys ← / → step through the minutes. Press **Play** to continue; the table then returns to the live values.
 
 On the simulated placeholder day the model reaches about 86 % on/off accuracy and 64 % energy accuracy. The hardest moments are minutes in which several appliances switch at the same time, or in which different appliances have similar power (e.g. electric stove ~2350 W vs. tumble dryer ~2400 W, dishwasher 1800 W vs. washing machine 2000 W). In such cases the panel splits the probability between the candidates instead of guessing.
 

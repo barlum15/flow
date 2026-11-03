@@ -156,4 +156,7 @@ export function drawChart(canvas, { records, from, to, tickEvery, live, now, mar
   }
 
   ctx.restore();
+
+  // Geometry of the plot, so clicks can be mapped to minutes.
+  return { from, to, left: pad.left, width: w };
 }

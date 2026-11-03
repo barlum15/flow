@@ -181,6 +181,22 @@ async function start() {
   // Clicking into the disaggregation chart pauses the program; Play resumes.
   nilmView.onSelect = () => setPlaying(false);
 
+  // The smart meter chart works the same way and shares the selected minute,
+  // so both panels always show the same point in time.
+  const meterCanvas = $("chart");
+  let meterLayout = null;
+  meterCanvas.addEventListener("click", (event) => {
+    if (!meterLayout) return;
+    const { from, to, left, width } = meterLayout;
+    if (event.offsetX < left || event.offsetX > left + width) return;
+    nilmView.select(Math.floor(from + ((event.offsetX - left) / width) * (to - from)));
+  });
+  meterCanvas.addEventListener("keydown", (event) => {
+    if (nilmView.selectedT === null || !["ArrowLeft", "ArrowRight"].includes(event.key)) return;
+    event.preventDefault();
+    nilmView.select(nilmView.selectedT + (event.key === "ArrowLeft" ? -1 : 1));
+  });
+
   const CHART_HINTS = {
     live: "last 60 min · 1-minute resolution",
     day: "00:00 – 24:00 · 1-minute resolution",
@@ -225,7 +241,10 @@ async function start() {
     const dayText = source.repeating ? `${source.dayLabel(dayIndex)} · run ${sim.day}` : source.dayLabel(dayIndex);
     setText($("day"), waiting ? "Loading…" : dayText);
     if (source.kind === "recorded" && document.activeElement !== dateJump) dateJump.value = source.dateOf(dayIndex);
-    setText($("total"), Math.round(meter.total).toLocaleString("en-US"));
+    // While a minute is selected, the readout shows the power of that minute.
+    const selected = nilmView.selectedT !== null ? nilmView.entryAt(nilmView.selectedT) : null;
+    setText($("power-label"), selected ? `Power at ${formatTime(selected.t % MINUTES_PER_DAY)}` : "Current power");
+    setText($("total"), Math.round(selected ? selected.total : meter.total).toLocaleString("en-US"));
     setText($("energy"), meter.energyKWh.toFixed(2));
     setText($("peak"), Math.round(meter.peakW).toLocaleString("en-US"));
     setText($("reading"), formatReading(meter.readingKWh));
@@ -235,7 +254,7 @@ async function start() {
       chartRange === "live"
         ? { from: sim.time - LIVE_WINDOW_MINUTES, to: sim.time, tickEvery: 15 }
         : { from: sim.dayStart, to: sim.dayStart + MINUTES_PER_DAY, tickEvery: 180 };
-    drawChart($("chart"), {
+    meterLayout = drawChart(meterCanvas, {
       records: meter.records,
       live,
       now: chartRange === "day" ? sim.time : undefined,
