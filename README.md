@@ -91,7 +91,7 @@ Then open http://localhost:8000 in your browser. A local web server is needed be
 
 ## How the Prototype Works
 
-1. A simulated clock runs through the day (speed: 1 min/s, 10 min/s or 1 h/s).
+1. A simulated clock runs through the day. *Speed* is a time-lapse factor: 1× (real time), 60× (1 s = 1 min), 600× (1 s = 10 min, default) or 3600× (1 s = 1 h).
 2. On every step, each device looks up its current power in its consumption curve and **requests** it from the smart meter.
 3. The smart meter **only adds up** the requested watts. It never knows which device asked. Every simulated minute it stores the average total of that minute (1-minute resolution).
 4. Each cable shows yellow balls flowing from the smart meter to the device that draws the power; more power means more balls. Every device that is on gets at least a few balls, so small loads (e.g. the AHU at 45 W) stay visible.

@@ -37,10 +37,11 @@
         <button id="play" type="button">Pause</button>
         <label>
           Speed
-          <select id="speed">
-            <option value="1">1 min/s</option>
-            <option value="10" selected>10 min/s</option>
-            <option value="60">1 h/s</option>
+          <select id="speed" title="Time-lapse factor: how much faster than real time the simulation runs">
+            <option value="1" data-long="1× · real time">1×</option>
+            <option value="60" data-long="60× · 1 s = 1 min">60×</option>
+            <option value="600" data-long="600× · 1 s = 10 min" selected>600×</option>
+            <option value="3600" data-long="3600× · 1 s = 1 h">3600×</option>
           </select>
         </label>
         <button id="theme-switch" class="theme-switch" type="button" role="switch" aria-checked="false" aria-label="Dark mode">

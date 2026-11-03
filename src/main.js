@@ -77,6 +77,18 @@ async function start() {
   const $ = (id) => document.getElementById(id);
   const playButton = $("play");
   const speedSelect = $("speed");
+
+  // Speed is a time-lapse factor. The open list explains each step
+  // ("600× · 1 s = 10 min"), the closed field shows only "600×".
+  const speedLabels = (long) => {
+    for (const option of speedSelect.options) {
+      option.textContent = long ? option.dataset.long : `${option.value}×`;
+    }
+  };
+  speedSelect.addEventListener("mousedown", () => speedLabels(true));
+  speedSelect.addEventListener("keydown", () => speedLabels(true));
+  speedSelect.addEventListener("change", () => speedLabels(false));
+  speedSelect.addEventListener("blur", () => speedLabels(false));
   const sourceSelect = $("source-select");
   const dateJump = $("date-jump");
   const repeatDay = $("repeat-day");
@@ -280,7 +292,7 @@ async function start() {
     if (recompute) {
       continueRecompute(25); // a slice of the recalculation per frame
     } else if (playing) {
-      let minutes = dt * Number(speedSelect.value); // simulated minutes per real second
+      let minutes = (dt * Number(speedSelect.value)) / 60; // time-lapse factor -> simulated minutes
       while (minutes > 0) {
         // Recorded days are loaded on demand; wait until the current one is there.
         source.prefetch(sim.time);
