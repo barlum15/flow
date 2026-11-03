@@ -691,6 +691,11 @@ main[data-zoom="nilm"] .nilm-body {
   color: var(--muted);
 }
 
+.residual-hint {
+  font-size: 11px;
+  opacity: 0.8;
+}
+
 .nilm-rest .nilm-name {
   font-weight: 400;
 }

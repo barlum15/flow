@@ -5,7 +5,7 @@
 import { niceStep, formatClock, formatWatts, MIN_GRID_SPACING } from "./chart.js";
 import { wasDrag } from "./chart-zoom.js";
 
-const UNEXPLAINED_COLOR = "#8a93a3";
+const RESIDUAL_COLOR = "#8a93a3";
 
 function setText(node, text) {
   if (node.textContent !== text) node.textContent = text;
@@ -26,7 +26,7 @@ function make(tag, className, parent, text) {
 export class NilmView {
   constructor(root, appliances) {
     this.root = root;
-    this.history = []; // { t, total, parts: { id: watts }, unexplained, result, truth }
+    this.history = []; // { t, total, parts: { id: watts }, residual, result, truth }
     this.selectedT = null; // minute shown in the table while inspecting
     this.onSelect = null; // called when the user picks a point in time
     this.layout = null; // last chart geometry, used to map clicks to minutes
@@ -87,9 +87,10 @@ export class NilmView {
 
     const rest = make("div", "nilm-row nilm-rest", this.table);
     const restName = make("div", "nilm-name", rest);
-    make("span", "swatch", restName).style.background = UNEXPLAINED_COLOR;
-    make("span", "", restName, "Unexplained");
-    make("div", "nilm-state", rest, "");
+    make("span", "swatch", restName).style.background = RESIDUAL_COLOR;
+    make("span", "", restName, "Residual");
+    restName.title = "Measured minus the sum of all estimates. Positive: consumption no appliance explains. Negative: the appliances are estimated higher than measured.";
+    make("div", "nilm-state residual-hint", rest, "measured − estimated");
     make("div", "nilm-prob", rest, "");
     this.restEstimate = make("div", "nilm-estimate", rest, "–");
     make("div", "nilm-actual", rest, "");
@@ -154,7 +155,7 @@ export class NilmView {
       t,
       total: result.total,
       parts: Object.fromEntries(result.appliances.map((a) => [a.id, a.estimate])),
-      unexplained: Math.max(0, result.unexplained),
+      residual: Math.max(0, result.residual), // only the unexplained (positive) part is stacked
       result,
       truth,
     });
@@ -190,8 +191,8 @@ export class NilmView {
       const hit = actual === undefined || (actual > 5) === on;
       r.actual.classList.toggle("miss", !hit);
     }
-    const rest = result.unexplained;
-    setText(this.restEstimate, `${rest >= 0 ? "" : "−"}${Math.abs(Math.round(rest))} W`);
+    const rest = Math.round(result.residual);
+    setText(this.restEstimate, `${rest > 0 ? "+" : rest < 0 ? "−" : ""}${Math.abs(rest)} W`);
 
     setText(this.confidence, percent(result.confidence));
   }
@@ -222,7 +223,7 @@ export class NilmView {
     const pad = { left: 52, right: 16, top: 12, bottom: 26 };
     const w = width - pad.left - pad.right;
     const h = height - pad.top - pad.bottom;
-    const peak = Math.max(400, ...points.map((p) => Math.max(p.total, Object.values(p.parts).reduce((a, b) => a + b, 0) + p.unexplained))) * 1.05;
+    const peak = Math.max(400, ...points.map((p) => Math.max(p.total, Object.values(p.parts).reduce((a, b) => a + b, 0) + p.residual))) * 1.05;
     const targetLines = Math.max(2, Math.min(5, Math.floor(h / MIN_GRID_SPACING)));
     const step = niceStep(peak / targetLines);
     const gridLines = Math.ceil(peak / step);
@@ -259,8 +260,8 @@ export class NilmView {
 
     // Each record covers one minute: [t, t + 1).
     const layers = [...this.appliances.map((a) => ({ color: a.color, value: (p) => p.parts[a.id] ?? 0 })), {
-      color: UNEXPLAINED_COLOR,
-      value: (p) => p.unexplained,
+      color: RESIDUAL_COLOR,
+      value: (p) => p.residual,
     }];
     const base = new Float64Array(points.length);
     for (const layer of layers) {

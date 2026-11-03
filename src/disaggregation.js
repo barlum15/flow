@@ -152,7 +152,6 @@ export class FhmmDisaggregator {
     const stateProbs = this.appliances.map((a) => new Float64Array(a.states.length));
     const est = new Float64Array(n);
     const est2 = new Float64Array(n);
-    let unexplained = 0;
     let best = 0;
 
     for (let j = 0; j < this.size; j++) {
@@ -164,7 +163,6 @@ export class FhmmDisaggregator {
       // proportion to their variance (conditional mean of a Gaussian sum).
       const v = this.variance[j];
       const r = (watts - this.mean[j]) / v;
-      unexplained += w * this.noiseVar * r;
 
       for (let d = 0; d < n; d++) {
         const state = this.appliances[d].states[this.stateOf[d][j]];
@@ -192,7 +190,12 @@ export class FhmmDisaggregator {
       };
     });
 
-    return { total: watts, appliances, unexplained, confidence: best };
+    // Residual = measured − sum of the estimates. Appliances + residual always
+    // add up to the reading: positive = consumption no appliance explains,
+    // negative = the appliances are estimated higher than what was measured.
+    const residual = watts - appliances.reduce((sum, a) => sum + a.estimate, 0);
+
+    return { total: watts, appliances, residual, confidence: best };
   }
 }
 

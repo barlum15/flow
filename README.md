@@ -124,6 +124,7 @@ Next to the house and the smart meter, a panel estimates which appliances are ru
 **Display**
 
 - Per appliance: most likely state, probability of being on, estimated power ± uncertainty, and the actual power from the simulation (ground truth, shown in red when on/off was misclassified)
+- Residual = measured − sum of all estimates, so appliances + residual always add up to the reading. Positive: consumption that no appliance explains (shown in grey on top of the stacked chart). Negative: the appliances are estimated higher than what the smart meter measured, e.g. because a device runs below its nominal power or the model is unsure whether it is on.
 - Model confidence: probability of the most likely combination of states
 - On/off accuracy and energy accuracy (1 − Σ|estimate − actual| / (2 · Σ actual)) over the last 24 hours
 - Stacked chart of the estimated contributions with the measured total as a dashed line; it follows the Live/Today switch of the smart meter chart
