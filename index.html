@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>flow</title>
+    <link rel="stylesheet" href="src/style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>flow</h1>
+      <div class="controls">
+        <span id="day" class="pill">Day 1</span>
+        <span id="clock" class="clock">06:00</span>
+        <button id="play" type="button">Pause</button>
+        <label>
+          Speed
+          <select id="speed">
+            <option value="1">1 min/s</option>
+            <option value="10" selected>10 min/s</option>
+            <option value="60">1 h/s</option>
+          </select>
+        </label>
+      </div>
+    </header>
+
+    <main>
+      <svg id="house" viewBox="0 0 1000 600" role="img" aria-label="Devices connected to the smart meter"></svg>
+
+      <aside>
+        <section>
+          <h2>Smart meter</h2>
+          <div class="stats">
+            <div><span class="stat-label">Current total</span><span id="total" class="stat-value">0 W</span></div>
+            <div><span class="stat-label">Energy today</span><span id="energy" class="stat-value">0.00 kWh</span></div>
+          </div>
+          <canvas id="chart" aria-label="Recorded total consumption"></canvas>
+        </section>
+        <section>
+          <h2>Devices</h2>
+          <div id="devices" class="device-list"></div>
+        </section>
+      </aside>
+    </main>
+
+    <p id="error" class="error"></p>
+    <script type="module" src="src/main.js"></script>
+  </body>
+</html>
