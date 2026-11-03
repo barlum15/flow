@@ -78,14 +78,14 @@ export class HouseView {
       }
       if (!active) cable.spawnBudget = 0;
 
-      // Move balls towards the smart meter and remove those that arrived.
+      // Move balls from the smart meter to the device and remove those that arrived.
       cable.balls = cable.balls.filter((ball) => {
         ball.distance += BALL_SPEED * dtSeconds;
         if (ball.distance >= cable.length) {
           ball.node.remove();
           return false;
         }
-        const p = cable.path.getPointAtLength(ball.distance);
+        const p = cable.path.getPointAtLength(cable.length - ball.distance);
         ball.node.setAttribute("cx", p.x);
         ball.node.setAttribute("cy", p.y);
         return true;

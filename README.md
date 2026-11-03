@@ -10,7 +10,7 @@ A house contains several electrical devices (e.g. fridge, washing machine, oven,
 
 - **Devices** have a stored **consumption curve** (power over time) in a database in the background.
 - When a device needs electricity, it **requests** that consumption from the smart meter.
-- The flow of electricity is visualized: **yellow balls travel through the cable** from the device to the smart meter. The more power a device draws, the more (or faster) balls flow.
+- The flow of electricity is visualized: **yellow balls travel through the cable** from the smart meter to the device, because the device draws the electricity. The more power a device draws, the more (or faster) balls flow.
 - The **smart meter only sees the sum**. It does not know which device consumed what. It records the aggregated total consumption over time and stores it.
 
 This shows how individual devices add up to the single total that a real smart meter measures.
@@ -76,7 +76,7 @@ Then open http://localhost:8000 in your browser. A local web server is needed be
 1. A simulated clock runs through the day (speed: 1 min/s, 10 min/s or 1 h/s).
 2. On every step, each device looks up its current power in its consumption curve and **requests** it from the smart meter.
 3. The smart meter **only adds up** the requested watts. It never knows which device asked. Every 5 simulated minutes it stores the total.
-4. Each cable shows yellow balls flowing towards the smart meter; more power means more balls.
+4. Each cable shows yellow balls flowing from the smart meter to the device that draws the power; more power means more balls.
 5. Devices can be switched off in the side panel to see how the total changes.
 
 ## Contributing
