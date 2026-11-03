@@ -10,11 +10,11 @@ export function sampleCurve(curve, hour) {
 }
 
 export class Device {
-  constructor({ id, name, position, curve }) {
+  constructor({ id, name, curve, ...appearance }) {
     this.id = id;
     this.name = name;
-    this.position = position;
     this.curve = curve;
+    Object.assign(this, appearance); // wall, plug, color, boxes (used by the view)
     this.enabled = true;
     this.power = 0; // current draw in watts
   }

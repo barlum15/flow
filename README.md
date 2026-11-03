@@ -40,8 +40,8 @@ flow is a **web app** that runs in any browser and also locally on your own mach
 **Prototype (current):**
 
 - Plain HTML, CSS and JavaScript (ES modules), no build step, no dependencies
-- SVG for the house, cables and animated balls; Canvas for the consumption chart
-- `data/devices.json` acts as the database for the devices' consumption curves
+- Isometric SVG view of the house (rooms, walls, devices, cables and animated balls); Canvas for the consumption chart
+- `data/devices.json` acts as the database for the floor plan, the devices' 3D shapes and their consumption curves
 - The smart meter keeps its recorded totals in memory
 
 **Planned next step:**
@@ -65,11 +65,11 @@ Then open http://localhost:8000 in your browser. A local web server is needed be
 | --- | --- |
 | `index.html` | Page layout and controls |
 | `src/simulation.js` | Devices, smart meter and simulated clock |
-| `src/view.js` | SVG rendering of devices, cables and the yellow balls |
+| `src/view.js` | Isometric SVG rendering of the house, devices, cables and the yellow balls |
 | `src/chart.js` | Chart of the totals recorded by the smart meter |
 | `src/main.js` | Loads data and runs the animation loop |
 | `src/style.css` | Styling (light and dark mode) |
-| `data/devices.json` | Devices with position and hourly consumption curve (24 values in watts) |
+| `data/devices.json` | Floor plan, smart meter position and devices (shape, plug position, hourly consumption curve with 24 values in watts) |
 
 ## How the Prototype Works
 
@@ -78,6 +78,15 @@ Then open http://localhost:8000 in your browser. A local web server is needed be
 3. The smart meter **only adds up** the requested watts. It never knows which device asked. Every 5 simulated minutes it stores the total.
 4. Each cable shows yellow balls flowing from the smart meter to the device that draws the power; more power means more balls.
 5. Devices can be switched off in the side panel to see how the total changes.
+
+## Isometric View
+
+The house is drawn in an isometric projection. All positions in `data/devices.json` are world coordinates in meters:
+
+- `x` runs along the back wall, `y` along the left wall, `z` is the height above the floor.
+- A device consists of one or more boxes `[x0, y0, z0, x1, y1, z1]`. A box can have its own `color`, and `"glow": true` makes it light up while the device is on (e.g. a lamp shade).
+- `wall` (`"left"` or `"back"`) tells along which wall the cable is routed, and `plug` is where the cable enters the device.
+- Cables run from the smart meter along the walls in parallel lanes and are ordered automatically so they never cross.
 
 ## Contributing
 

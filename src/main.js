@@ -4,11 +4,14 @@ import { drawChart } from "./chart.js";
 
 const MAX_STEP_MINUTES = 1; // simulation resolution per step
 
-async function loadDevices() {
+async function loadData() {
   const response = await fetch("data/devices.json");
   if (!response.ok) throw new Error(`Could not load devices (${response.status})`);
   const data = await response.json();
-  return data.devices.map((d) => new Device(d));
+  return {
+    devices: data.devices.map((d) => new Device(d)),
+    layout: { house: data.house, meter: data.meter },
+  };
 }
 
 function formatTime(minuteOfDay) {
@@ -31,10 +34,10 @@ function buildDeviceList(container, devices) {
 }
 
 async function start() {
-  const devices = await loadDevices();
+  const { devices, layout } = await loadData();
   const meter = new SmartMeter();
   const sim = new Simulation(devices, meter);
-  const view = new HouseView(document.getElementById("house"), devices);
+  const view = new HouseView(document.getElementById("house"), devices, layout);
 
   const clock = document.getElementById("clock");
   const day = document.getElementById("day");

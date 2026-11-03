@@ -8,6 +8,13 @@
   --cable-active: #8a93a3;
   --energy: #f5b301;
   --energy-glow: rgba(245, 179, 1, 0.45);
+  --floor: #ece7df;
+  --room-line: #d6cfc3;
+  --slab-side: #c9c2b6;
+  --wall: #e2e5ea;
+  --wall-top: #f7f8fa;
+  --edge: rgba(0, 0, 0, 0.12);
+  --meter: #cfd6df;
   color-scheme: light dark;
 }
 
@@ -22,6 +29,13 @@
     --cable-active: #5a6476;
     --energy: #ffc93c;
     --energy-glow: rgba(255, 201, 60, 0.5);
+    --floor: #262c37;
+    --room-line: #343c4a;
+    --slab-side: #1d222b;
+    --wall: #303846;
+    --wall-top: #3c4555;
+    --edge: rgba(0, 0, 0, 0.35);
+    --meter: #4a5465;
   }
 }
 
@@ -164,25 +178,58 @@ aside section {
   padding: 0 24px;
 }
 
-/* SVG */
+/* SVG: isometric house */
 
-.house {
-  fill: none;
-  stroke: var(--border);
-  stroke-width: 2;
-  stroke-dasharray: 6 6;
+.slab .face-top {
+  fill: var(--floor);
 }
 
-.house-label {
+.slab .face-left,
+.slab .face-right {
+  fill: var(--slab-side);
+}
+
+.room {
+  fill: var(--floor);
+  stroke: var(--room-line);
+  stroke-width: 1.5;
+}
+
+.room-label {
   fill: var(--muted);
-  font-size: 14px;
+  opacity: 0.8;
+}
+
+.wall .face-top {
+  fill: var(--wall-top);
+}
+
+.wall .face-left,
+.wall .face-right {
+  fill: var(--wall);
+}
+
+.box polygon {
+  stroke: var(--edge);
+  stroke-width: 1;
+  stroke-linejoin: round;
+}
+
+.meter polygon {
+  fill: var(--meter);
+}
+
+.meter.active polygon {
+  stroke: var(--energy);
+  stroke-width: 1.5;
 }
 
 .cable {
   fill: none;
   stroke: var(--cable);
-  stroke-width: 4;
+  stroke-width: 2.5;
   stroke-linecap: round;
+  stroke-linejoin: round;
   transition: stroke 0.3s;
 }
 
@@ -192,49 +239,58 @@ aside section {
 
 .ball {
   fill: var(--energy);
-  filter: drop-shadow(0 0 4px var(--energy-glow));
+  filter: drop-shadow(0 0 3px var(--energy-glow));
 }
 
-.device rect,
-.meter rect {
-  fill: var(--panel);
-  stroke: var(--border);
-  stroke-width: 2;
-  transition: stroke 0.3s;
+.device {
+  transition: opacity 0.3s;
 }
 
-.device.active rect {
-  stroke: var(--energy);
+.device.active {
+  filter: drop-shadow(0 0 6px var(--energy-glow));
 }
 
-.device.disabled {
-  opacity: 0.4;
+.device.active .glow polygon {
+  fill: var(--energy);
 }
 
-.meter rect {
-  stroke: var(--energy);
-  stroke-width: 3;
+.device.disabled,
+.device-label.disabled {
+  opacity: 0.35;
 }
 
-.device text,
-.meter text {
+.device-label text {
   text-anchor: middle;
   fill: var(--text);
+  paint-order: stroke;
+  stroke: var(--panel);
+  stroke-width: 4px;
+  stroke-linejoin: round;
 }
 
 .device-name {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
 }
 
-.device-watts {
-  font-size: 13px;
-  fill: var(--muted) !important;
+.device-label .device-watts {
+  font-size: 12px;
+  fill: var(--muted);
   font-variant-numeric: tabular-nums;
 }
 
+.leader {
+  stroke: var(--muted);
+  stroke-width: 1;
+  opacity: 0.5;
+}
+
+.meter-label text {
+  text-anchor: end;
+}
+
 .meter-watts {
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
