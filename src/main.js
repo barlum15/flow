@@ -82,7 +82,7 @@ async function start() {
       const result = nilm.update(record.watts);
       const truth = sim.truth.get(record.t);
       if (truth) metrics.add(record.t, result, truth);
-      nilmView.push(record.t, result);
+      nilmView.push(record.t, result, truth);
       lastFedMinute = record.t;
       latest = { result, truth };
     }
@@ -90,11 +90,15 @@ async function start() {
   }
 
   let playing = true;
-  playButton.addEventListener("click", () => {
-    playing = !playing;
+  function setPlaying(value) {
+    playing = value;
     playButton.textContent = playing ? "Pause" : "Play";
     $("live-badge").classList.toggle("paused", !playing);
-  });
+    if (playing) nilmView.clearSelection(); // resuming returns to the live view
+  }
+  playButton.addEventListener("click", () => setPlaying(!playing));
+  // Clicking into the disaggregation chart pauses the program; Play resumes.
+  nilmView.onSelect = () => setPlaying(false);
 
   const CHART_HINTS = {
     live: "last 60 min · 1-minute resolution",
@@ -141,7 +145,13 @@ async function start() {
       chartRange === "live"
         ? { from: sim.time - LIVE_WINDOW_MINUTES, to: sim.time, tickEvery: 15 }
         : { from: sim.dayStart, to: sim.dayStart + MINUTES_PER_DAY, tickEvery: 180 };
-    drawChart($("chart"), { records: meter.records, live, now: chartRange === "day" ? sim.time : undefined, ...range });
+    drawChart($("chart"), {
+      records: meter.records,
+      live,
+      now: chartRange === "day" ? sim.time : undefined,
+      marker: nilmView.selectedT,
+      ...range,
+    });
     nilmView.draw(range);
 
     requestAnimationFrame(frame);

@@ -28,8 +28,9 @@ export function formatWatts(w) {
  * @param {number} options.tickEvery minutes between x-axis labels
  * @param {{t:number, watts:number}} [options.live] current value, drawn as the last point
  * @param {number} [options.now] position of the "now" marker
+ * @param {number} [options.marker] minute selected for inspection (highlighted)
  */
-export function drawChart(canvas, { records, from, to, tickEvery, live, now }) {
+export function drawChart(canvas, { records, from, to, tickEvery, live, now, marker }) {
   const dpr = window.devicePixelRatio || 1;
   const width = canvas.clientWidth;
   const height = canvas.clientHeight;
@@ -131,6 +132,20 @@ export function drawChart(canvas, { records, from, to, tickEvery, live, now }) {
     ctx.stroke();
     ctx.setLineDash([]);
     ctx.globalAlpha = 1;
+  }
+
+  if (marker !== undefined && marker !== null) {
+    const text = styles.getPropertyValue("--text").trim();
+    ctx.fillStyle = text;
+    ctx.globalAlpha = 0.12;
+    ctx.fillRect(x(marker), pad.top, Math.max(2, x(marker + 1) - x(marker)), h);
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = text;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(Math.round(x(marker + 0.5)) + 0.5, pad.top);
+    ctx.lineTo(Math.round(x(marker + 0.5)) + 0.5, pad.top + h);
+    ctx.stroke();
   }
 
   if (live) {

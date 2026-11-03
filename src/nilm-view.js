@@ -26,8 +26,11 @@ export class NilmView {
   constructor(root, appliances) {
     this.root = root;
     this.appliances = appliances;
-    this.history = []; // { t, total, parts: [watts per appliance], unexplained }
+    this.history = []; // { t, total, parts, unexplained, result, truth }
     this.rows = new Map();
+    this.selectedT = null; // minute shown in the table while inspecting
+    this.onSelect = null; // called when the user picks a point in time
+    this.layout = null; // last chart geometry, used to map clicks to minutes
 
     const table = root.querySelector("#nilm-rows");
     for (const a of appliances) {
@@ -63,21 +66,88 @@ export class NilmView {
     this.energy = root.querySelector("#nilm-energy");
     this.speed = root.querySelector("#nilm-speed");
     this.canvas = root.querySelector("#nilm-chart");
+    this.snapshot = root.querySelector("#nilm-snapshot");
+    this.snapshotTime = root.querySelector("#nilm-snapshot-time");
+
+    this.canvas.addEventListener("click", (event) => {
+      const t = this.minuteAt(event.offsetX);
+      if (t !== null) this.select(t);
+    });
+    this.canvas.addEventListener("keydown", (event) => {
+      if (this.selectedT === null || !["ArrowLeft", "ArrowRight"].includes(event.key)) return;
+      event.preventDefault();
+      this.select(this.selectedT + (event.key === "ArrowLeft" ? -1 : 1));
+    });
   }
 
-  /** Stores one disaggregation result (one minute) for the chart. */
-  push(t, result) {
+  /** Maps a click position to the minute of the closest stored result. */
+  minuteAt(px) {
+    if (!this.layout || this.history.length === 0) return null;
+    const { from, to, left, width } = this.layout;
+    if (px < left || px > left + width) return null;
+    return Math.floor(from + ((px - left) / width) * (to - from));
+  }
+
+  entryAt(t) {
+    // History is sorted by t: binary search for the last entry at or before t.
+    let lo = 0;
+    let hi = this.history.length - 1;
+    if (hi < 0 || t < this.history[0].t) return this.history[0] ?? null;
+    while (lo < hi) {
+      const mid = (lo + hi + 1) >> 1;
+      if (this.history[mid].t <= t) lo = mid;
+      else hi = mid - 1;
+    }
+    return this.history[lo];
+  }
+
+  /** Shows the stored result of the given minute and notifies the app (to pause). */
+  select(t) {
+    const entry = this.entryAt(t);
+    if (!entry) return;
+    this.selectedT = entry.t;
+    this.render(entry.result, entry.truth);
+    setText(this.snapshotTime, formatClock(entry.t));
+    this.snapshot.hidden = false;
+    this.root.classList.add("inspecting");
+    this.onSelect?.(entry.t);
+  }
+
+  /** Returns to the live view. */
+  clearSelection() {
+    this.selectedT = null;
+    this.snapshot.hidden = true;
+    this.root.classList.remove("inspecting");
+    if (this.latest) this.render(this.latest.result, this.latest.truth);
+  }
+
+  /** Stores one disaggregation result (one minute) for the chart and for inspection. */
+  push(t, result, truth) {
     this.history.push({
       t,
       total: result.total,
       parts: result.appliances.map((a) => a.estimate),
       unexplained: Math.max(0, result.unexplained),
+      result,
+      truth,
     });
     if (this.history.length > 2 * 1440) this.history.shift();
   }
 
-  /** Updates the table with the latest result. */
+  /** Receives the latest live result. The table only follows it when not inspecting. */
   update(result, truth, metrics, updateMs) {
+    this.latest = { result, truth };
+    if (this.selectedT === null) this.render(result, truth);
+
+    setText(this.onOff, percent(metrics.onOffAccuracy));
+    setText(this.energy, percent(metrics.energyAccuracy));
+    // Browsers round performance.now(), so show a running average.
+    this.avgMs = this.avgMs === undefined ? updateMs : this.avgMs * 0.95 + updateMs * 0.05;
+    setText(this.speed, this.avgMs < 0.1 ? "< 0.1 ms" : `${this.avgMs.toFixed(1)} ms`);
+  }
+
+  /** Fills the table with one result. */
+  render(result, truth) {
     for (const a of result.appliances) {
       const r = this.rows.get(a.id);
       const on = a.pOn >= 0.5;
@@ -96,11 +166,6 @@ export class NilmView {
     setText(this.restEstimate, `${rest >= 0 ? "" : "−"}${Math.abs(Math.round(rest))} W`);
 
     setText(this.confidence, percent(result.confidence));
-    setText(this.onOff, percent(metrics.onOffAccuracy));
-    setText(this.energy, percent(metrics.energyAccuracy));
-    // Browsers round performance.now(), so show a running average.
-    this.avgMs = this.avgMs === undefined ? updateMs : this.avgMs * 0.95 + updateMs * 0.05;
-    setText(this.speed, this.avgMs < 0.1 ? "< 0.1 ms" : `${this.avgMs.toFixed(1)} ms`);
   }
 
   /** Draws the stacked estimate chart for the given time range. */
@@ -136,6 +201,7 @@ export class NilmView {
     const maxWatts = step * gridLines;
     const x = (t) => pad.left + ((t - from) / (to - from)) * w;
     const y = (watts) => pad.top + h - (watts / maxWatts) * h;
+    this.layout = { from, to, left: pad.left, width: w };
 
     ctx.font = "11px system-ui, sans-serif";
     ctx.lineWidth = 1;
@@ -201,6 +267,36 @@ export class NilmView {
     });
     ctx.stroke();
     ctx.setLineDash([]);
+
+    // Selected minute
+    if (this.selectedT !== null && this.selectedT >= from - 1 && this.selectedT <= to) {
+      const sx = x(this.selectedT + 0.5);
+      ctx.fillStyle = text;
+      ctx.globalAlpha = 0.12;
+      ctx.fillRect(x(this.selectedT), pad.top, Math.max(2, x(this.selectedT + 1) - x(this.selectedT)), h);
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = text;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(Math.round(sx) + 0.5, pad.top);
+      ctx.lineTo(Math.round(sx) + 0.5, pad.top + h);
+      ctx.stroke();
+    }
     ctx.restore();
+
+    if (this.selectedT !== null && this.selectedT >= from - 1 && this.selectedT <= to) {
+      const label = formatClock(this.selectedT);
+      ctx.font = "600 11px system-ui, sans-serif";
+      const lw = ctx.measureText(label).width + 12;
+      const lx = Math.min(Math.max(x(this.selectedT + 0.5) - lw / 2, pad.left), pad.left + w - lw);
+      ctx.fillStyle = text;
+      ctx.beginPath();
+      ctx.roundRect(lx, pad.top, lw, 18, 4);
+      ctx.fill();
+      ctx.fillStyle = styles.getPropertyValue("--panel").trim();
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(label, lx + lw / 2, pad.top + 9);
+    }
   }
 }

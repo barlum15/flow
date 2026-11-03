@@ -91,7 +91,12 @@
       <section id="nilm" class="panel nilm-panel" aria-labelledby="nilm-title">
         <div class="nilm-header">
           <div>
-            <h2 id="nilm-title">Load disaggregation</h2>
+            <h2 id="nilm-title">
+              Load disaggregation
+              <span id="nilm-snapshot" class="snapshot-badge" hidden>
+                Showing <span id="nilm-snapshot-time">--:--</span> · paused, press Play to resume
+              </span>
+            </h2>
             <p class="nilm-subtitle">
               Factorial HMM with online forward filter · uses only the smart meter readings and an appliance library
             </p>
@@ -130,10 +135,16 @@
 
           <div class="nilm-chart-block">
             <div class="chart-title">
-              Estimated breakdown <span class="chart-hint">stacked estimates · dashed line: measured total</span>
+              Estimated breakdown
+              <span class="chart-hint">stacked estimates · dashed line: measured total · click to inspect a minute</span>
             </div>
             <div class="chart-wrap">
-              <canvas id="nilm-chart" class="chart" aria-label="Estimated power per appliance over time"></canvas>
+              <canvas
+                id="nilm-chart"
+                class="chart nilm-canvas"
+                tabindex="0"
+                aria-label="Estimated power per appliance over time. Click to inspect a minute, then use the arrow keys to step."
+              ></canvas>
             </div>
           </div>
         </div>
