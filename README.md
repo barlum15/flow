@@ -83,13 +83,14 @@ Then open http://localhost:8000 in your browser. A local web server is needed be
 ### Smart Meter Display
 
 - **Current power** as a large live value, plus energy today, peak today and the meter reading (total kWh since start, like a real counter)
-- **Live chart**: scrolling view of the last 60 simulated minutes with the current value as the newest point
-- **Today chart**: the whole day from 00:00 to 24:00 at 1-minute resolution with a marker for the current time
+- **Chart** with two ranges, switchable above the chart:
+  - **Live**: scrolling view of the last 60 simulated minutes with the current value as the newest point
+  - **Today**: the whole day from 00:00 to 24:00 at 1-minute resolution with a marker for the current time
 - The meter keeps the last two simulated days of records
 
 ### Layout and Theme
 
-- The house and the smart meter panel sit side by side, always with the same height, and fill the browser window; on narrow screens they stack.
+- The house and the smart meter panel sit side by side. The house panel sets the height and the smart meter panel matches it; on narrow screens they stack.
 - A switch in the header toggles between light and dark mode. Without a saved choice the page follows the system setting; the choice is remembered in the browser.
 
 ## Isometric View

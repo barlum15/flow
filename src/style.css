@@ -146,21 +146,13 @@ select {
   cursor: pointer;
 }
 
-body {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-}
-
-/* Both panels share one row and therefore always have the same height. */
+/* Both panels share one row. The house panel sets the row height. */
 main {
-  flex: 1;
   display: grid;
   grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
   align-items: stretch;
   gap: 16px;
   padding: 16px 24px;
-  min-height: 560px;
 }
 
 .house-panel,
@@ -171,8 +163,10 @@ main {
 }
 
 @media (min-width: 1001px) {
-  body {
-    height: 100vh; /* panels fill the window below the header */
+  /* The meter panel's own content does not size the row, so it takes
+     exactly the height of the house panel; its charts fill the rest. */
+  .meter-panel {
+    contain: size;
   }
 }
 
@@ -200,16 +194,8 @@ main {
 
 #house {
   display: block;
-  flex: 1 1 0;
   width: 100%;
-  min-height: 0;
-}
-
-@media (max-width: 1000px) {
-  #house {
-    flex: none;
-    height: auto;
-  }
+  height: auto;
 }
 
 .device-list {
@@ -304,7 +290,7 @@ main {
 
 .readout-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
   gap: 12px;
 }
 
@@ -316,7 +302,7 @@ main {
 
 .big-value {
   display: block;
-  font-size: 48px;
+  font-size: clamp(34px, 3.3vw, 48px);
   font-weight: 700;
   line-height: 1;
   color: var(--energy);
@@ -324,7 +310,8 @@ main {
 }
 
 .stat-value {
-  font-size: 20px;
+  font-size: clamp(15px, 1.4vw, 20px);
+  white-space: nowrap;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
@@ -342,21 +329,41 @@ main {
 }
 
 .chart-block {
+  flex: 1 1 0;
   display: flex;
   flex-direction: column;
   min-height: 0;
 }
 
-.chart-block + .chart-block {
-  margin-top: 16px;
+.chart-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
 }
 
-.chart-live-block {
-  flex: 3 1 0;
+.segmented {
+  display: inline-flex;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--bg);
 }
 
-.chart-day-block {
-  flex: 2 1 0;
+.segmented button {
+  height: auto;
+  padding: 3px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.segmented button[aria-selected="true"] {
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
 }
 
 /* The canvas fills its wrapper; the wrapper takes the remaining height. */
@@ -366,14 +373,8 @@ main {
   min-height: 120px;
 }
 
-.chart-title {
-  margin-bottom: 6px;
-  font-size: 13px;
-  font-weight: 600;
-}
-
 .chart-hint {
-  margin-left: 6px;
+  font-size: 12px;
   font-weight: 400;
   color: var(--muted);
 }
@@ -387,14 +388,9 @@ main {
 }
 
 @media (max-width: 1000px) {
-  .chart-live-block .chart-wrap {
+  .chart-wrap {
     flex: none;
     height: 240px;
-  }
-
-  .chart-day-block .chart-wrap {
-    flex: none;
-    height: 180px;
   }
 }
 

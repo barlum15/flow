@@ -1,6 +1,6 @@
 // Canvas line charts of the totals recorded by the smart meter.
 
-const TARGET_GRID_LINES = 5;
+const MIN_GRID_SPACING = 36; // px between horizontal grid lines
 
 /** Rounds a value up to a "nice" step (1, 2 or 5 times a power of ten). */
 function niceStep(value) {
@@ -57,7 +57,8 @@ export function drawChart(canvas, { records, from, to, tickEvery, live, now }) {
   const w = width - pad.left - pad.right;
   const h = height - pad.top - pad.bottom;
   const peak = Math.max(400, ...points.map((p) => p.watts)) * 1.05;
-  const step = niceStep(peak / TARGET_GRID_LINES);
+  const targetLines = Math.max(2, Math.min(5, Math.floor(h / MIN_GRID_SPACING)));
+  const step = niceStep(peak / targetLines);
   const gridLines = Math.ceil(peak / step);
   const maxWatts = step * gridLines;
 

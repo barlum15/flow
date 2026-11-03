@@ -66,6 +66,20 @@ async function start() {
     $("live-badge").classList.toggle("paused", !playing);
   });
 
+  const CHART_HINTS = {
+    live: "last 60 min · 1-minute resolution",
+    day: "00:00 – 24:00 · 1-minute resolution",
+  };
+  let chartRange = "live";
+  const tabs = document.querySelectorAll(".segmented button");
+  for (const tab of tabs) {
+    tab.addEventListener("click", () => {
+      chartRange = tab.dataset.range;
+      for (const t of tabs) t.setAttribute("aria-selected", String(t === tab));
+      $("chart-hint").textContent = CHART_HINTS[chartRange];
+    });
+  }
+
   sim.step(0);
   let last = performance.now();
 
@@ -92,21 +106,12 @@ async function start() {
     setText($("reading"), formatReading(meter.readingKWh));
 
     const live = { t: sim.time, watts: meter.total };
-    drawChart($("live-chart"), {
-      records: meter.records,
-      from: sim.time - LIVE_WINDOW_MINUTES,
-      to: sim.time,
-      tickEvery: 15,
-      live,
-    });
-    drawChart($("day-chart"), {
-      records: meter.records,
-      from: sim.dayStart,
-      to: sim.dayStart + MINUTES_PER_DAY,
-      tickEvery: 180,
-      live,
-      now: sim.time,
-    });
+    drawChart(
+      $("chart"),
+      chartRange === "live"
+        ? { records: meter.records, from: sim.time - LIVE_WINDOW_MINUTES, to: sim.time, tickEvery: 15, live }
+        : { records: meter.records, from: sim.dayStart, to: sim.dayStart + MINUTES_PER_DAY, tickEvery: 180, live, now: sim.time },
+    );
 
     requestAnimationFrame(frame);
   }

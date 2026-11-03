@@ -74,17 +74,16 @@
           </div>
         </div>
 
-        <div class="chart-block chart-live-block">
-          <div class="chart-title">Live <span class="chart-hint">last 60 min · 1-minute resolution</span></div>
-          <div class="chart-wrap">
-            <canvas id="live-chart" class="chart" aria-label="Total power of the last 60 minutes"></canvas>
+        <div class="chart-block">
+          <div class="chart-header">
+            <div class="segmented" role="tablist" aria-label="Chart range">
+              <button type="button" role="tab" data-range="live" aria-selected="true">Live</button>
+              <button type="button" role="tab" data-range="day" aria-selected="false">Today</button>
+            </div>
+            <span id="chart-hint" class="chart-hint">last 60 min · 1-minute resolution</span>
           </div>
-        </div>
-
-        <div class="chart-block chart-day-block">
-          <div class="chart-title">Today <span class="chart-hint">00:00 – 24:00 · 1-minute resolution</span></div>
           <div class="chart-wrap">
-            <canvas id="day-chart" class="chart" aria-label="Total power recorded today"></canvas>
+            <canvas id="chart" class="chart" aria-label="Total power recorded by the smart meter"></canvas>
           </div>
         </div>
       </section>
