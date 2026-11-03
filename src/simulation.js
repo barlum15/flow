@@ -26,9 +26,9 @@ export class Device {
     this.power = 0; // current draw in watts
   }
 
-  /** Computes the current draw and requests it from the smart meter. */
-  update(hour, meter) {
-    this.power = this.enabled ? sampleCurve(this.curve, hour) : 0;
+  /** Sets the current draw (from the data source) and requests it from the smart meter. */
+  update(power, meter) {
+    this.power = this.enabled ? power : 0;
     if (this.power > 0) meter.request(this.power);
   }
 }
@@ -94,10 +94,16 @@ export class SmartMeter {
 }
 
 export class Simulation {
-  constructor(devices, meter, { startHour = 6 } = {}) {
+  /**
+   * @param {Device[]} devices
+   * @param {SmartMeter} meter
+   * @param {{ powerAt(device, time): number, startTime?: number }} source where device power comes from
+   */
+  constructor(devices, meter, source, { startTime = source.startTime ?? 6 * 60 } = {}) {
     this.devices = devices;
     this.meter = meter;
-    this.time = startHour * 60; // minutes since day 1, 00:00
+    this.source = source;
+    this.time = startTime; // minutes since day 1, 00:00
 
     // Ground truth: average power of every device per minute. Only used to
     // rate the disaggregation - the algorithm itself never sees it.
@@ -140,8 +146,7 @@ export class Simulation {
   /** Advances simulated time by the given number of minutes. */
   step(minutes) {
     const start = this.time;
-    const hour = (start % MINUTES_PER_DAY) / 60;
-    for (const device of this.devices) device.update(hour, this.meter);
+    for (const device of this.devices) device.update(this.source.powerAt(device, start), this.meter);
     this.meter.commit(start, minutes);
     this.recordTruth(start, minutes);
 

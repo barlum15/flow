@@ -70,6 +70,9 @@ Then open http://localhost:8000 in your browser. A local web server is needed be
 | `src/main.js` | Loads data and runs the animation loop |
 | `src/theme.js` | Light/dark mode switch |
 | `src/zoom.js` | Zoom into a single panel and back to the overview |
+| `src/data-source.js` | Data sources: mock curves or recorded data from `data/real/` |
+| `tools/import_h5.py` | Converts recorded `.h5` files into `data/real/` (local only, never committed) |
+| `.gitignore` | Keeps `data/real/` and all `.h5` files out of the repository |
 | `src/disaggregation.js` | FHMM load disaggregation and accuracy metrics |
 | `src/nilm-view.js` | Load disaggregation panel (table and stacked chart) |
 | `src/style.css` | Styling (light and dark mode) |
@@ -138,6 +141,46 @@ On the simulated placeholder day the model reaches about 86 % on/off accuracy an
 | `lighting` | Lighting | Living room |
 
 The IDs are the same in `data/devices.json` and `data/appliance-library.json`. The consumption curves are placeholders until real measurements are imported. A curve splits the day into equal steps, so it can have any resolution: 24 values (hourly), 96 (every 15 minutes) or 1440 (every minute).
+
+## Using Recorded Data (.h5)
+
+The app can replay real appliance measurements instead of the mock curves. It was built for the [SmartNIALMeter dataset](https://zenodo.org/records/10875988) (one HDF5 file per appliance, `<type>/building_<x>/<appliance>.h5`, 5-second samples), but works with any pandas HDF5 files that contain a time index and a power column.
+
+> **The recorded data must never be committed or uploaded.** The import writes to `data/real/`, which is listed in `.gitignore` together with all `*.h5` files. Everyone converts the data locally.
+
+**1. Install the requirements (once)**
+
+```bash
+pip install pandas tables h5py
+```
+
+**2. Look at the files**
+
+```bash
+python tools/import_h5.py --inspect /path/to/building_1
+```
+
+This lists every file with its HDF key, columns, chosen power column(s), first timestamp and sampling interval, and the device ID it maps to.
+
+**3. Convert**
+
+```bash
+python tools/import_h5.py /path/to/building_1 --label "SmartNIALMeter building 1"
+```
+
+- Per-phase active power columns (e.g. `active power L1/L2/L3`) are summed; reactive and apparent power are ignored. Use `--column` to choose columns yourself.
+- File names are mapped to device IDs (`fridge_freezer.h5` → `fridge`, …). Use `--map name=id` to override, `--only` to import some devices, `--start`/`--end` to limit the period.
+- Samples are averaged per minute and stored per local day (`--timezone`, default `Europe/Zurich`; timestamps without a time zone are read as `--source-tz`, default UTC). On daylight saving days the skipped hour stays empty and the repeated hour is averaged.
+- Output: `data/real/manifest.json` and one file per day in `data/real/days/`. The app loads only the days it needs.
+
+**4. Open the app**
+
+When `data/real/manifest.json` exists, the app starts with the recorded data; otherwise it uses the mock curves. In the header you can:
+
+- switch between *Mock* and the recorded data,
+- jump to a recorded day with the date field.
+
+Devices without recorded data are switched off and greyed out. Gaps in the recordings count as 0 W. After the last recorded day the replay starts again with the first one. The smart meter still only sees the sum of the devices, and the load disaggregation still only sees the smart meter.
 
 ## Isometric View
 

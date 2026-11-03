@@ -17,6 +17,13 @@
     <header>
       <h1>flow</h1>
       <div class="controls">
+        <label class="source-control" title="Where the device power comes from">
+          Data
+          <select id="source-select">
+            <option value="mock">Mock</option>
+          </select>
+        </label>
+        <input id="date-jump" class="date-jump" type="date" aria-label="Jump to a recorded day" hidden />
         <span id="day" class="pill">Day 1</span>
         <span id="clock" class="clock">06:00</span>
         <button id="play" type="button">Pause</button>

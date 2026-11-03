@@ -5,6 +5,7 @@ import { initThemeSwitch } from "./theme.js";
 import { FhmmDisaggregator, NilmMetrics } from "./disaggregation.js";
 import { NilmView } from "./nilm-view.js";
 import { initZoom } from "./zoom.js";
+import { MockSource, RecordedSource } from "./data-source.js";
 
 initThemeSwitch(document.getElementById("theme-switch"));
 initZoom(document.querySelector("main"));
@@ -19,11 +20,16 @@ async function fetchJson(url) {
 }
 
 async function loadData() {
-  const [data, library] = await Promise.all([fetchJson("data/devices.json"), fetchJson("data/appliance-library.json")]);
+  const [data, library, recorded] = await Promise.all([
+    fetchJson("data/devices.json"),
+    fetchJson("data/appliance-library.json"),
+    RecordedSource.load(), // null when data/real/ holds no imported data
+  ]);
   return {
     devices: data.devices.map((d) => new Device(d)),
     layout: { house: data.house, meter: data.meter },
     library,
+    recorded,
   };
 }
 
@@ -44,6 +50,7 @@ function formatReading(kWh) {
 }
 
 function buildDeviceList(container, devices) {
+  const inputs = new Map();
   for (const device of devices) {
     const label = document.createElement("label");
     label.className = "device-toggle";
@@ -53,27 +60,78 @@ function buildDeviceList(container, devices) {
     input.addEventListener("change", () => (device.enabled = input.checked));
     label.append(input, ` ${device.name}`);
     container.appendChild(label);
+    inputs.set(device.id, { label, input });
   }
+  return inputs;
 }
 
 async function start() {
-  const { devices, layout, library } = await loadData();
-  const meter = new SmartMeter();
-  const sim = new Simulation(devices, meter);
+  const { devices, layout, library, recorded } = await loadData();
+  const sources = { mock: new MockSource(), ...(recorded ? { recorded } : {}) };
   const view = new HouseView(document.getElementById("house"), devices, layout);
 
   const $ = (id) => document.getElementById(id);
   const playButton = $("play");
   const speedSelect = $("speed");
+  const sourceSelect = $("source-select");
+  const dateJump = $("date-jump");
 
-  buildDeviceList($("devices"), devices);
+  const toggles = buildDeviceList($("devices"), devices);
+  const nilmView = new NilmView($("nilm"), new FhmmDisaggregator(library).appliances);
+
+  // Everything that depends on the data source and the start time. Rebuilt
+  // when the source changes or when jumping to another recorded day.
+  let source, meter, sim, nilm, metrics, lastFedMinute;
+
+  function run(nextSource, startTime = nextSource.startTime) {
+    source = nextSource;
+    meter = new SmartMeter();
+    sim = new Simulation(devices, meter, source, { startTime });
+    nilm = new FhmmDisaggregator(library);
+    metrics = new NilmMetrics();
+    lastFedMinute = -Infinity;
+    nilmView.reset();
+
+    // Devices without recorded data stay off in recorded mode.
+    for (const device of devices) {
+      const { label, input } = toggles.get(device.id);
+      const available = source.hasDevice(device.id);
+      device.enabled = available;
+      input.checked = available;
+      input.disabled = !available;
+      label.classList.toggle("no-data", !available);
+      label.title = available ? "" : "No recorded data for this device";
+    }
+
+    dateJump.hidden = source.kind !== "recorded";
+    if (source.kind === "recorded") {
+      dateJump.min = source.manifest.start;
+      dateJump.max = source.manifest.end;
+    }
+    source.prefetch(sim.time);
+  }
+
+  // Data source selection
+  if (recorded) {
+    const option = document.createElement("option");
+    option.value = "recorded";
+    option.textContent = `${recorded.label} (${recorded.range})`;
+    sourceSelect.append(option);
+    sourceSelect.value = "recorded"; // real data wins when it exists
+  } else {
+    sourceSelect.disabled = true;
+    sourceSelect.closest("label").title =
+      "No recorded data found in data/real/. Convert your .h5 files with tools/import_h5.py.";
+  }
+  sourceSelect.addEventListener("change", () => run(sources[sourceSelect.value]));
+  dateJump.addEventListener("change", () => {
+    const index = source.days?.indexOf(dateJump.value);
+    if (index >= 0) run(source, index * MINUTES_PER_DAY + 6 * 60);
+  });
+
+  run(sources[sourceSelect.value]);
 
   // Load disaggregation: fed with every new smart meter record (one per minute).
-  const nilm = new FhmmDisaggregator(library);
-  const metrics = new NilmMetrics();
-  const nilmView = new NilmView($("nilm"), nilm.appliances);
-  let lastFedMinute = -Infinity;
-
   function feedDisaggregation() {
     const records = meter.records;
     let i = records.length;
@@ -116,16 +174,22 @@ async function start() {
     });
   }
 
-  sim.step(0);
   let last = performance.now();
 
   function frame(now) {
     const dt = Math.min((now - last) / 1000, 0.1);
     last = now;
 
+    let waiting = false;
     if (playing) {
       let minutes = dt * Number(speedSelect.value); // simulated minutes per real second
       while (minutes > 0) {
+        // Recorded days are loaded on demand; wait until the current one is there.
+        source.prefetch(sim.time);
+        if (!source.isReady(sim.time)) {
+          waiting = true;
+          break;
+        }
         const step = Math.min(minutes, MAX_STEP_MINUTES);
         sim.step(step);
         minutes -= step;
@@ -133,10 +197,12 @@ async function start() {
     }
 
     feedDisaggregation();
-    view.render(playing ? dt : 0, meter.total);
+    view.render(playing && !waiting ? dt : 0, meter.total);
 
+    const dayIndex = sim.day - 1;
     setText($("clock"), formatTime(sim.minuteOfDay));
-    setText($("day"), `Day ${sim.day}`);
+    setText($("day"), waiting ? "Loading…" : source.dayLabel(dayIndex));
+    if (source.kind === "recorded" && document.activeElement !== dateJump) dateJump.value = source.dateOf(dayIndex);
     setText($("total"), Math.round(meter.total).toLocaleString("en-US"));
     setText($("energy"), meter.energyKWh.toFixed(2));
     setText($("peak"), Math.round(meter.peakW).toLocaleString("en-US"));

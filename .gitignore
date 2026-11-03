@@ -1,0 +1,12 @@
+# Recorded consumption data is NOT ours to publish. It must never be committed.
+# The import script writes it to data/real/, which stays local only.
+data/real/
+*.h5
+*.hdf5
+*.hdf
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/

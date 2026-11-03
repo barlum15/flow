@@ -80,6 +80,14 @@ export class NilmView {
     });
   }
 
+  /** Forgets all results, e.g. after switching the data source or jumping to another day. */
+  reset() {
+    this.history = [];
+    this.latest = null;
+    this.avgMs = undefined;
+    this.clearSelection();
+  }
+
   /** Maps a click position to the minute of the closest stored result. */
   minuteAt(px) {
     if (!this.layout || this.history.length === 0) return null;
