@@ -68,6 +68,7 @@ Then open http://localhost:8000 in your browser. A local web server is needed be
 | `src/view.js` | Isometric SVG rendering of the house, devices, cables and the yellow balls |
 | `src/chart.js` | Live and daily charts of the totals recorded by the smart meter |
 | `src/main.js` | Loads data and runs the animation loop |
+| `src/theme.js` | Light/dark mode switch |
 | `src/style.css` | Styling (light and dark mode) |
 | `data/devices.json` | Floor plan, smart meter position and devices (shape, plug position, hourly consumption curve with 24 values in watts) |
 
@@ -85,6 +86,11 @@ Then open http://localhost:8000 in your browser. A local web server is needed be
 - **Live chart**: scrolling view of the last 60 simulated minutes with the current value as the newest point
 - **Today chart**: the whole day from 00:00 to 24:00 at 1-minute resolution with a marker for the current time
 - The meter keeps the last two simulated days of records
+
+### Layout and Theme
+
+- The house and the smart meter panel sit side by side, always with the same height, and fill the browser window; on narrow screens they stack.
+- A switch in the header toggles between light and dark mode. Without a saved choice the page follows the system setting; the choice is remembered in the browser.
 
 ## Isometric View
 

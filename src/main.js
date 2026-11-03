@@ -1,6 +1,9 @@
 import { Device, SmartMeter, Simulation, MINUTES_PER_DAY } from "./simulation.js";
 import { HouseView } from "./view.js";
 import { drawChart } from "./chart.js";
+import { initThemeSwitch } from "./theme.js";
+
+initThemeSwitch(document.getElementById("theme-switch"));
 
 const MAX_STEP_MINUTES = 1; // simulation resolution per step
 const LIVE_WINDOW_MINUTES = 60; // range of the live chart

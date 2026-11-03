@@ -26,7 +26,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #12151c;
     --panel: #1b2029;
     --text: #e6e9ef;
@@ -48,7 +48,37 @@
     --display-bg: #0d1016;
     --live: #ff6369;
     --live-bg: rgba(255, 99, 105, 0.15);
+    color-scheme: dark;
   }
+}
+
+:root[data-theme="dark"] {
+  --bg: #12151c;
+  --panel: #1b2029;
+  --text: #e6e9ef;
+  --muted: #9aa3b2;
+  --border: #2d3441;
+  --cable: #3a4252;
+  --cable-active: #5a6476;
+  --energy: #ffc93c;
+  --energy-glow: rgba(255, 201, 60, 0.5);
+  --floor: #262c37;
+  --room-line: #343c4a;
+  --slab-side: #1d222b;
+  --wall: #303846;
+  --wall-top: #3c4555;
+  --edge: rgba(0, 0, 0, 0.35);
+  --meter: #4a5465;
+  --grid: rgba(255, 255, 255, 0.07);
+  --energy-fill: rgba(255, 201, 60, 0.3);
+  --display-bg: #0d1016;
+  --live: #ff6369;
+  --live-bg: rgba(255, 99, 105, 0.15);
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
 }
 
 * {
@@ -108,6 +138,7 @@ button,
 select {
   font: inherit;
   padding: 6px 12px;
+  height: 36px;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--bg);
@@ -115,12 +146,34 @@ select {
   cursor: pointer;
 }
 
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* Both panels share one row and therefore always have the same height. */
 main {
+  flex: 1;
   display: grid;
   grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-  align-items: start;
+  align-items: stretch;
   gap: 16px;
   padding: 16px 24px;
+  min-height: 560px;
+}
+
+.house-panel,
+.meter-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+@media (min-width: 1001px) {
+  body {
+    height: 100vh; /* panels fill the window below the header */
+  }
 }
 
 @media (max-width: 1000px) {
@@ -147,8 +200,16 @@ main {
 
 #house {
   display: block;
+  flex: 1 1 0;
   width: 100%;
-  height: auto;
+  min-height: 0;
+}
+
+@media (max-width: 1000px) {
+  #house {
+    flex: none;
+    height: auto;
+  }
 }
 
 .device-list {
@@ -280,8 +341,29 @@ main {
   color: var(--display-muted);
 }
 
+.chart-block {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
 .chart-block + .chart-block {
   margin-top: 16px;
+}
+
+.chart-live-block {
+  flex: 3 1 0;
+}
+
+.chart-day-block {
+  flex: 2 1 0;
+}
+
+/* The canvas fills its wrapper; the wrapper takes the remaining height. */
+.chart-wrap {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 120px;
 }
 
 .chart-title {
@@ -297,16 +379,76 @@ main {
 }
 
 .chart {
+  position: absolute;
+  inset: 0;
   display: block;
   width: 100%;
+  height: 100%;
 }
 
-.chart-live {
-  height: 240px;
+@media (max-width: 1000px) {
+  .chart-live-block .chart-wrap {
+    flex: none;
+    height: 240px;
+  }
+
+  .chart-day-block .chart-wrap {
+    flex: none;
+    height: 180px;
+  }
 }
 
-.chart-day {
-  height: 180px;
+/* Theme switch */
+
+.theme-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 64px;
+  height: 32px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--muted);
+}
+
+.theme-switch svg {
+  position: relative;
+  z-index: 1;
+  width: 16px;
+  height: 16px;
+  transition: color 0.2s;
+}
+
+.theme-switch .knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--panel);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: transform 0.2s ease;
+}
+
+.theme-switch[aria-checked="true"] .knob {
+  transform: translateX(32px);
+}
+
+.theme-switch[aria-checked="false"] .icon-sun,
+.theme-switch[aria-checked="true"] .icon-moon {
+  color: var(--energy);
+}
+
+.theme-switch:focus-visible {
+  outline: 2px solid var(--energy);
+  outline-offset: 2px;
+}
+
+.error:empty {
+  display: none;
 }
 
 .error {
