@@ -60,15 +60,47 @@ export class RecordedSource {
     this.label = manifest.source || "Recorded data";
     this.startTime = 6 * 60; // 06:00 on the first recorded day
     this.cache = new Map(); // day index -> { status, data }
+    this.offset = 0; // recorded day shown on simulation day 1
+    this.fixed = null; // when set, this recorded day repeats forever ("fixed date")
   }
 
   get range() {
     return `${this.manifest.start} – ${this.manifest.end}`;
   }
 
-  /** Index into this.days for a simulation time; wraps around at the end. */
+  /** Recorded day index for a simulation day (0 = first simulated day). */
+  resolve(simDay) {
+    if (this.fixed !== null) return this.fixed;
+    const n = this.days.length;
+    return (((simDay + this.offset) % n) + n) % n; // wraps around at the end
+  }
+
+  /** Index into this.days for a simulation time. */
   dayIndex(time) {
-    return Math.floor(time / MINUTES_PER_DAY) % this.days.length;
+    return this.resolve(Math.floor(time / MINUTES_PER_DAY));
+  }
+
+  /** Makes the given recorded day the first simulated day (keeps "repeat" on if it was). */
+  jumpTo(index) {
+    this.offset = index;
+    if (this.fixed !== null) this.fixed = index;
+  }
+
+  /**
+   * Turns "repeat this day" on or off for the day shown on simulation day
+   * `simDay`. Turning it off continues normally with the following days.
+   */
+  setRepeat(simDay, on) {
+    if (on) {
+      this.fixed = this.resolve(simDay);
+    } else if (this.fixed !== null) {
+      this.offset = this.fixed - simDay;
+      this.fixed = null;
+    }
+  }
+
+  get repeating() {
+    return this.fixed !== null;
   }
 
   hasDevice(id) {
@@ -119,8 +151,9 @@ export class RecordedSource {
     return value == null || value < 0 ? 0 : value; // gaps count as 0 W
   }
 
-  dateOf(dayIndex) {
-    return this.days[((dayIndex % this.days.length) + this.days.length) % this.days.length];
+  /** Date (YYYY-MM-DD) shown on simulation day `simDay`. */
+  dateOf(simDay) {
+    return this.days[this.resolve(simDay)];
   }
 
   dayLabel(dayIndex) {

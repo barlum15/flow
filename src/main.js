@@ -75,6 +75,8 @@ async function start() {
   const speedSelect = $("speed");
   const sourceSelect = $("source-select");
   const dateJump = $("date-jump");
+  const repeatDay = $("repeat-day");
+  const repeatToggle = $("repeat-toggle");
 
   const toggles = buildDeviceList($("devices"), devices);
   const nilmView = new NilmView($("nilm"), new FhmmDisaggregator(library).appliances);
@@ -104,6 +106,8 @@ async function start() {
     }
 
     dateJump.hidden = source.kind !== "recorded";
+    repeatDay.hidden = source.kind !== "recorded";
+    repeatToggle.checked = Boolean(source.repeating);
     if (source.kind === "recorded") {
       dateJump.min = source.manifest.start;
       dateJump.max = source.manifest.end;
@@ -126,8 +130,13 @@ async function start() {
   sourceSelect.addEventListener("change", () => run(sources[sourceSelect.value]));
   dateJump.addEventListener("change", () => {
     const index = source.days?.indexOf(dateJump.value);
-    if (index >= 0) run(source, index * MINUTES_PER_DAY + 6 * 60);
+    if (index >= 0) {
+      source.jumpTo(index); // the chosen day becomes simulation day 1
+      run(source, 6 * 60);
+    }
   });
+  // "Repeat day": after midnight the same recorded day starts again.
+  repeatToggle.addEventListener("change", () => source.setRepeat?.(sim.day - 1, repeatToggle.checked));
 
   run(sources[sourceSelect.value]);
 
@@ -201,7 +210,8 @@ async function start() {
 
     const dayIndex = sim.day - 1;
     setText($("clock"), formatTime(sim.minuteOfDay));
-    setText($("day"), waiting ? "Loading…" : source.dayLabel(dayIndex));
+    const dayText = source.repeating ? `${source.dayLabel(dayIndex)} · run ${sim.day}` : source.dayLabel(dayIndex);
+    setText($("day"), waiting ? "Loading…" : dayText);
     if (source.kind === "recorded" && document.activeElement !== dateJump) dateJump.value = source.dateOf(dayIndex);
     setText($("total"), Math.round(meter.total).toLocaleString("en-US"));
     setText($("energy"), meter.energyKWh.toFixed(2));

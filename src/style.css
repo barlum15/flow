@@ -719,6 +719,40 @@ main[data-zoom="nilm"] .nilm-chart-block .chart-wrap {
   display: none;
 }
 
+.repeat-day {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  font-size: 14px;
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.repeat-day svg {
+  width: 16px;
+  height: 16px;
+  color: var(--muted);
+}
+
+.repeat-day:has(input:checked) {
+  border-color: var(--energy);
+  background: var(--energy-fill);
+}
+
+.repeat-day:has(input:checked) svg {
+  color: var(--text);
+}
+
+.repeat-day[hidden] {
+  display: none;
+}
+
 .device-toggle.no-data {
   opacity: 0.45;
   cursor: not-allowed;

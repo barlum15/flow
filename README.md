@@ -248,7 +248,8 @@ py -m http.server 8000
 Open http://localhost:8000 (or reload the page if it is already open). When `data/real/manifest.json` exists, the app starts with the recorded data; otherwise it uses the mock curves. In the header you can:
 
 - switch between *Mock* and the recorded data,
-- jump to a recorded day with the date field.
+- jump to a recorded day with the date field,
+- turn on **Repeat day** to replay one day again and again (a "fixed date"): at midnight the same recorded day starts over, and the day label shows the run (e.g. `Sun, 26 Mar 2023 · run 3`). Picking another date while it is on repeats that day instead. Turning it off continues with the following day.
 
 Devices without recorded data are switched off and greyed out. Gaps in the recordings count as 0 W. After the last recorded day the replay starts again with the first one. The smart meter still only sees the sum of the devices, and the load disaggregation still only sees the smart meter.
 
