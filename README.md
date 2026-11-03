@@ -146,7 +146,9 @@ The IDs are the same in `data/devices.json` and `data/appliance-library.json`. T
 
 The app can replay real appliance measurements instead of the mock curves. It was built for the [SmartNIALMeter dataset](https://zenodo.org/records/10875988) (one HDF5 file per appliance, `<type>/building_<x>/<appliance>.h5`, 5-second samples), but works with any pandas HDF5 files that contain a time index and a power column.
 
-> **The recorded data must never be committed or uploaded.** The import writes to `data/real/`, which is listed in `.gitignore` together with all `*.h5` files. Everyone converts the data locally.
+> **The recorded data must never be committed or uploaded.** The import writes to `data/real/`, which is listed in `.gitignore` together with `data/raw/` and all `*.h5` files. Everyone converts the data locally.
+
+> **The app does not read `.h5` files directly.** Copying them into `data/raw/` is not enough: run the import script (step 3) first. Only when it has written `data/real/manifest.json` does the recorded data appear in the *Data* selection in the header.
 
 **Folder structure**
 
@@ -172,16 +174,30 @@ flow/
 
 The file names decide which device a file belongs to. Use the device IDs above, or keep the original names and map them with `--map original_name=device_id`. The files may also stay anywhere outside the project; just pass that path to the script.
 
+Run all commands in the project folder (`flow`). On Windows, use `py` (or `python`) and backslashes in paths, as shown in the Windows blocks.
+
 **1. Install the requirements (once)**
 
 ```bash
 pip install pandas tables h5py
 ```
 
+Windows:
+
+```bash
+py -m pip install pandas tables h5py
+```
+
 **2. Look at the files**
 
 ```bash
 python tools/import_h5.py --inspect data/raw/building_1
+```
+
+Windows:
+
+```bash
+py tools\import_h5.py --inspect data\raw\building_1
 ```
 
 This lists every file with its HDF key, columns, chosen power column(s), first timestamp and sampling interval, and the device ID it maps to.
@@ -191,6 +207,14 @@ This lists every file with its HDF key, columns, chosen power column(s), first t
 ```bash
 python tools/import_h5.py data/raw/building_1 --label "SmartNIALMeter building 1"
 ```
+
+Windows:
+
+```bash
+py tools\import_h5.py data\raw\building_1 --label "SmartNIALMeter building 1"
+```
+
+At the end the script prints `Wrote … days … to …/data/real/`. Run it again whenever the `.h5` files change; it replaces the earlier import.
 
 - Per-phase active power columns (e.g. `active power L1/L2/L3`) are summed; reactive and apparent power are ignored. Use `--column` to choose columns yourself.
 - File names are mapped to device IDs (`fridge_freezer.h5` → `fridge`, …). Use `--map name=id` to override, `--only` to import some devices, `--start`/`--end` to limit the period.
@@ -209,14 +233,33 @@ Example layout of one file (`coffee_maker.h5`, pandas HDFStore, fixed format):
 
 Converting one such year takes a few seconds and about 0.5 GB of memory per file.
 
-**4. Open the app**
+**4. Start the server in the project folder and open the app**
 
-When `data/real/manifest.json` exists, the app starts with the recorded data; otherwise it uses the mock curves. In the header you can:
+```bash
+python3 -m http.server 8000
+```
+
+Windows:
+
+```bash
+py -m http.server 8000
+```
+
+Open http://localhost:8000 (or reload the page if it is already open). When `data/real/manifest.json` exists, the app starts with the recorded data; otherwise it uses the mock curves. In the header you can:
 
 - switch between *Mock* and the recorded data,
 - jump to a recorded day with the date field.
 
 Devices without recorded data are switched off and greyed out. Gaps in the recordings count as 0 W. After the last recorded day the replay starts again with the first one. The smart meter still only sees the sum of the devices, and the load disaggregation still only sees the smart meter.
+
+**Troubleshooting: the *Data* selection only offers "Mock"**
+
+1. Check that `data/real/manifest.json` and the folder `data/real/days/` exist. If not, the import (step 3) has not run or failed; run it again and read its output.
+2. Open http://localhost:8000/data/real/manifest.json in the browser. If it shows "File not found", the server was started in another folder: stop it and start it in the project folder `flow`.
+3. Reload the page after importing (the manifest is read when the page loads).
+4. `ModuleNotFoundError: No module named 'tables'` (or `pandas`): install the requirements (step 1) for the same Python you run the script with.
+5. A file is imported under an unexpected name or "not a device in data/devices.json": rename the file to a device ID or use `--map original_name=device_id`. `--inspect` shows the mapping.
+6. "Could not find a power column": use `--column "Active Power"` (any part of the column name).
 
 ## Isometric View
 
