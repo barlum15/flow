@@ -54,10 +54,18 @@ flow is a **web app** that runs in any browser and also locally on your own mach
 ```bash
 git clone https://github.com/barlum15/flow.git
 cd flow
-python3 -m http.server 8000
+python3 tools/serve.py
+```
+
+Windows:
+
+```bash
+py tools\serve.py
 ```
 
 Then open http://localhost:8000 in your browser. A local web server is needed because browsers block loading `data/devices.json` from `file://`.
+
+`tools/serve.py` tells the browser not to cache any file, so a normal reload always shows the latest changes. With `python -m http.server` the browser may keep old JavaScript and CSS files: changes then only appear in a private window or after a hard reload (Ctrl+Shift+R, on macOS Cmd+Shift+R). If an old version still shows up once, do one hard reload or clear the cached files for localhost.
 
 ## Project Structure
 
@@ -71,6 +79,7 @@ Then open http://localhost:8000 in your browser. A local web server is needed be
 | `src/theme.js` | Light/dark mode switch |
 | `src/zoom.js` | Zoom into a single panel and back to the overview |
 | `src/data-source.js` | Data sources: mock curves or recorded data from `data/real/` |
+| `tools/serve.py` | Local web server that disables browser caching |
 | `tools/import_h5.py` | Converts recorded `.h5` files into `data/real/` (local only, never committed) |
 | `.gitignore` | Keeps `data/real/` and all `.h5` files out of the repository |
 | `src/disaggregation.js` | FHMM load disaggregation and accuracy metrics |
@@ -238,13 +247,13 @@ Converting one such year takes a few seconds and about 0.5 GB of memory per file
 **4. Start the server in the project folder and open the app**
 
 ```bash
-python3 -m http.server 8000
+python3 tools/serve.py
 ```
 
 Windows:
 
 ```bash
-py -m http.server 8000
+py tools\serve.py
 ```
 
 Open http://localhost:8000 (or reload the page if it is already open). When `data/real/manifest.json` exists, the app starts with the recorded data; otherwise it uses the mock curves. In the header you can:
@@ -258,7 +267,7 @@ Devices without recorded data are switched off and greyed out. Gaps in the recor
 **Troubleshooting: the *Data* selection only offers "Mock"**
 
 1. Check that `data/real/manifest.json` and the folder `data/real/days/` exist. If not, the import (step 3) has not run or failed; run it again and read its output.
-2. Open http://localhost:8000/data/real/manifest.json in the browser. If it shows "File not found", the server was started in another folder: stop it and start it in the project folder `flow`.
+2. Open http://localhost:8000/data/real/manifest.json in the browser. If it shows "File not found", the import has not written its output, or (with `python -m http.server`) the server was started in another folder. `tools/serve.py` always serves the project folder.
 3. Reload the page after importing (the manifest is read when the page loads).
 4. `ModuleNotFoundError: No module named 'tables'` (or `pandas`): install the requirements (step 1) for the same Python you run the script with.
 5. A file is imported under an unexpected name or "not a device in data/devices.json": rename the file to a device ID or use `--map original_name=device_id`. `--inspect` shows the mapping.
