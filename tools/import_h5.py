@@ -285,6 +285,16 @@ def convert(args, files: list[Path], mapping: dict[str, str]) -> None:
     frame = frame.groupby(["date", "minute"]).mean()
 
     dates = sorted(frame.index.get_level_values("date").unique())
+
+    # Converting to local time can leave a few minutes on an extra day at the
+    # start or end of the recording (e.g. 1 January of the next year). Drop
+    # such days when they hold less than a quarter of a day of data.
+    filled = frame.notna().any(axis=1).groupby(level="date").sum()
+    while len(dates) > 1 and filled.get(dates[0], 0) < 360:
+        dates.pop(0)
+    while len(dates) > 1 and filled.get(dates[-1], 0) < 360:
+        dates.pop()
+
     if args.start:
         dates = [d for d in dates if d >= args.start]
     if args.end:

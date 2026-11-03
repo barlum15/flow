@@ -172,6 +172,18 @@ python tools/import_h5.py /path/to/building_1 --label "SmartNIALMeter building 1
 - File names are mapped to device IDs (`fridge_freezer.h5` → `fridge`, …). Use `--map name=id` to override, `--only` to import some devices, `--start`/`--end` to limit the period.
 - Samples are averaged per minute and stored per local day (`--timezone`, default `Europe/Zurich`; timestamps without a time zone are read as `--source-tz`, default UTC). On daylight saving days the skipped hour stays empty and the repeated hour is averaged.
 - Output: `data/real/manifest.json` and one file per day in `data/real/days/`. The app loads only the days it needs.
+- Days at the start or end with less than 6 hours of data (e.g. a few minutes that land on 1 January of the next year after the time zone conversion) are dropped.
+- **Check the time zone of your timestamps.** The SmartNIALMeter files have exactly 17,280 samples per day all year, with no gap or repeat at the daylight saving switches, so their clock is most likely UTC (the default). If you see routines (e.g. the morning coffee) shift by one hour between winter and summer in the app, the timestamps were already local: convert again with `--source-tz Europe/Zurich`.
+
+Example layout of one file (`coffee_maker.h5`, pandas HDFStore, fixed format):
+
+| HDF5 path | Shape | Content |
+| --- | --- | --- |
+| `data/axis0` | (2,) | column names `Active Power`, `Reactive Power` |
+| `data/axis1` | (6307200,) | timestamps, ns since 1970-01-01, every 5 s |
+| `data/block0_values` | (6307200, 2) | active power (W), reactive power (var) |
+
+Converting one such year takes a few seconds and about 0.5 GB of memory per file.
 
 **4. Open the app**
 
