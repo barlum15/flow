@@ -192,10 +192,13 @@ main {
   user-select: none;
 }
 
+/* The house is drawn slightly smaller than the panel width; the panel
+   height (and with it the smart meter panel) follows from it. */
 #house {
   display: block;
-  width: 100%;
+  width: 87%;
   height: auto;
+  margin: 0 auto;
 }
 
 .device-list {
@@ -788,12 +791,12 @@ main {
 }
 
 .device-name {
-  font-size: 17px;
+  font-size: 19px;
   font-weight: 600;
 }
 
 .device-label .device-watts {
-  font-size: 15px;
+  font-size: 17px;
   fill: var(--muted);
   font-variant-numeric: tabular-nums;
 }
