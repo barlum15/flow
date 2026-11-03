@@ -29,11 +29,17 @@ function transitionMatrix(states) {
 }
 
 export class FhmmDisaggregator {
-  constructor(library) {
+  /**
+   * @param {object} library appliance library
+   * @param {{ only?: Iterable<string> }} [options] restrict the model to these
+   *   appliance IDs (the appliances known to be in the house)
+   */
+  constructor(library, { only } = {}) {
     this.noiseVar = library.noiseW ** 2;
     this.outlier = library.outlierProbability ?? 0.01;
+    const include = only ? new Set(only) : null;
 
-    this.appliances = library.appliances.map((a) => {
+    this.appliances = library.appliances.filter((a) => !include || include.has(a.id)).map((a) => {
       const initial = a.initial
         ? normalize(a.states.map((s) => a.initial[s.name] ?? 0))
         : normalize(a.states.map((s, i) => (i === 0 ? 0.9 : 0.1 / (a.states.length - 1))));

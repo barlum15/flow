@@ -107,6 +107,8 @@ Below the house and the smart meter, a panel estimates which appliances are runn
 - The transition step is applied per appliance, so an update takes about 1 ms in the browser.
 - The spread of a state is treated as a persistent deviation from the nominal power, not as new noise every minute. Otherwise the model drifts towards whichever explanation has the narrowest spread.
 
+**Only the selected appliances:** the disaggregation models and lists only the appliances that are switched on with the chips below the house. Unchecking e.g. the TV removes it from the table, the chart and the model (the appliance inventory of the house is known, as in real NILM setups). Fewer appliances also mean fewer state combinations, so the estimates get faster and usually more accurate. Changing the selection restarts the filter, which settles again within a few readings.
+
 **What the algorithm knows:** only `data/appliance-library.json`, a "data sheet" with the typical power states, their spread, typical durations and possible next states. It never sees the consumption curves in `data/devices.json`.
 
 **Display**

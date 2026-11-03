@@ -49,7 +49,7 @@ function formatReading(kWh) {
   return `${whole.padStart(5, "0")}.${fraction}`;
 }
 
-function buildDeviceList(container, devices) {
+function buildDeviceList(container, devices, onChange) {
   const inputs = new Map();
   for (const device of devices) {
     const label = document.createElement("label");
@@ -57,7 +57,10 @@ function buildDeviceList(container, devices) {
     const input = document.createElement("input");
     input.type = "checkbox";
     input.checked = device.enabled;
-    input.addEventListener("change", () => (device.enabled = input.checked));
+    input.addEventListener("change", () => {
+      device.enabled = input.checked;
+      onChange();
+    });
     label.append(input, ` ${device.name}`);
     container.appendChild(label);
     inputs.set(device.id, { label, input });
@@ -78,8 +81,8 @@ async function start() {
   const repeatDay = $("repeat-day");
   const repeatToggle = $("repeat-toggle");
 
-  const toggles = buildDeviceList($("devices"), devices);
-  const nilmView = new NilmView($("nilm"), new FhmmDisaggregator(library).appliances);
+  const toggles = buildDeviceList($("devices"), devices, () => rebuildDisaggregation());
+  const nilmView = new NilmView($("nilm"), []);
 
   // Everything that depends on the data source and the start time. Rebuilt
   // when the source changes or when jumping to another recorded day.
@@ -89,7 +92,6 @@ async function start() {
     source = nextSource;
     meter = new SmartMeter();
     sim = new Simulation(devices, meter, source, { startTime });
-    nilm = new FhmmDisaggregator(library);
     metrics = new NilmMetrics();
     lastFedMinute = -Infinity;
     nilmView.reset();
@@ -113,6 +115,16 @@ async function start() {
       dateJump.max = source.manifest.end;
     }
     source.prefetch(sim.time);
+    rebuildDisaggregation();
+  }
+
+  // The disaggregation only models (and lists) the appliances that are
+  // switched on in the house. Changing the selection restarts the filter;
+  // it settles again within a few readings.
+  function rebuildDisaggregation() {
+    const active = devices.filter((d) => d.enabled).map((d) => d.id);
+    nilm = new FhmmDisaggregator(library, { only: active });
+    nilmView.setAppliances(nilm.appliances);
   }
 
   // Data source selection

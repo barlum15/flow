@@ -25,43 +25,15 @@ function make(tag, className, parent, text) {
 export class NilmView {
   constructor(root, appliances) {
     this.root = root;
-    this.appliances = appliances;
-    this.history = []; // { t, total, parts, unexplained, result, truth }
-    this.rows = new Map();
+    this.history = []; // { t, total, parts: { id: watts }, unexplained, result, truth }
     this.selectedT = null; // minute shown in the table while inspecting
     this.onSelect = null; // called when the user picks a point in time
     this.layout = null; // last chart geometry, used to map clicks to minutes
-
-    const table = root.querySelector("#nilm-rows");
-    for (const a of appliances) {
-      const row = make("div", "nilm-row", table);
-      const name = make("div", "nilm-name", row);
-      make("span", "swatch", name).style.background = a.color;
-      make("span", "", name, a.name);
-
-      const state = make("div", "nilm-state", row, "–");
-
-      const prob = make("div", "nilm-prob", row);
-      const bar = make("div", "prob-bar", prob);
-      const fill = make("div", "prob-fill", bar);
-      fill.style.background = a.color;
-      const pText = make("span", "prob-text", prob, "–");
-
-      const estimate = make("div", "nilm-estimate", row, "–");
-      const actual = make("div", "nilm-actual", row, "–");
-      this.rows.set(a.id, { row, state, fill, pText, estimate, actual });
-    }
-
-    const rest = make("div", "nilm-row nilm-rest", table);
-    const restName = make("div", "nilm-name", rest);
-    make("span", "swatch", restName).style.background = UNEXPLAINED_COLOR;
-    make("span", "", restName, "Unexplained");
-    make("div", "nilm-state", rest, "");
-    make("div", "nilm-prob", rest, "");
-    this.restEstimate = make("div", "nilm-estimate", rest, "–");
-    make("div", "nilm-actual", rest, "");
+    this.table = root.querySelector("#nilm-rows");
+    this.setAppliances(appliances);
 
     this.confidence = root.querySelector("#nilm-confidence");
+
     this.onOff = root.querySelector("#nilm-onoff");
     this.energy = root.querySelector("#nilm-energy");
     this.speed = root.querySelector("#nilm-speed");
@@ -78,6 +50,51 @@ export class NilmView {
       event.preventDefault();
       this.select(this.selectedT + (event.key === "ArrowLeft" ? -1 : 1));
     });
+  }
+
+  /**
+   * Builds one table row per appliance. Only the appliances that are switched
+   * on in the house are passed in, so the table and the chart stay focused.
+   */
+  setAppliances(appliances) {
+    this.appliances = appliances;
+    this.rows = new Map();
+    this.table.replaceChildren();
+
+    for (const a of appliances) {
+      const row = make("div", "nilm-row", this.table);
+      const name = make("div", "nilm-name", row);
+      make("span", "swatch", name).style.background = a.color;
+      make("span", "", name, a.name);
+
+      const state = make("div", "nilm-state", row, "–");
+
+      const prob = make("div", "nilm-prob", row);
+      const bar = make("div", "prob-bar", prob);
+      const fill = make("div", "prob-fill", bar);
+      fill.style.background = a.color;
+      const pText = make("span", "prob-text", prob, "–");
+
+      const estimate = make("div", "nilm-estimate", row, "–");
+      const actual = make("div", "nilm-actual", row, "–");
+      this.rows.set(a.id, { row, state, fill, pText, estimate, actual });
+    }
+    if (appliances.length === 0) {
+      make("div", "nilm-empty", this.table, "No appliances selected in the house.");
+    }
+
+    const rest = make("div", "nilm-row nilm-rest", this.table);
+    const restName = make("div", "nilm-name", rest);
+    make("span", "swatch", restName).style.background = UNEXPLAINED_COLOR;
+    make("span", "", restName, "Unexplained");
+    make("div", "nilm-state", rest, "");
+    make("div", "nilm-prob", rest, "");
+    this.restEstimate = make("div", "nilm-estimate", rest, "–");
+    make("div", "nilm-actual", rest, "");
+
+    // Show the current values again in the new rows.
+    const entry = this.selectedT !== null ? this.entryAt(this.selectedT) : this.latest;
+    if (entry && this.confidence) this.render(entry.result, entry.truth);
   }
 
   /** Forgets all results, e.g. after switching the data source or jumping to another day. */
@@ -134,7 +151,7 @@ export class NilmView {
     this.history.push({
       t,
       total: result.total,
-      parts: result.appliances.map((a) => a.estimate),
+      parts: Object.fromEntries(result.appliances.map((a) => [a.id, a.estimate])),
       unexplained: Math.max(0, result.unexplained),
       result,
       truth,
@@ -158,6 +175,7 @@ export class NilmView {
   render(result, truth) {
     for (const a of result.appliances) {
       const r = this.rows.get(a.id);
+      if (!r) continue; // appliance no longer selected
       const on = a.pOn >= 0.5;
       r.row.classList.toggle("is-on", on);
       setText(r.state, `${a.state} · ${Math.round(a.stateProbability * 100)} %`);
@@ -202,7 +220,7 @@ export class NilmView {
     const pad = { left: 52, right: 16, top: 12, bottom: 26 };
     const w = width - pad.left - pad.right;
     const h = height - pad.top - pad.bottom;
-    const peak = Math.max(400, ...points.map((p) => Math.max(p.total, p.parts.reduce((a, b) => a + b, 0) + p.unexplained))) * 1.05;
+    const peak = Math.max(400, ...points.map((p) => Math.max(p.total, Object.values(p.parts).reduce((a, b) => a + b, 0) + p.unexplained))) * 1.05;
     const targetLines = Math.max(2, Math.min(5, Math.floor(h / MIN_GRID_SPACING)));
     const step = niceStep(peak / targetLines);
     const gridLines = Math.ceil(peak / step);
@@ -238,7 +256,7 @@ export class NilmView {
     ctx.clip();
 
     // Each record covers one minute: [t, t + 1).
-    const layers = [...this.appliances.map((a, i) => ({ color: a.color, value: (p) => p.parts[i] })), {
+    const layers = [...this.appliances.map((a) => ({ color: a.color, value: (p) => p.parts[a.id] ?? 0 })), {
       color: UNEXPLAINED_COLOR,
       value: (p) => p.unexplained,
     }];
