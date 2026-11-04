@@ -4,12 +4,25 @@
 
 import { MINUTES_PER_DAY } from "./simulation.js";
 
+/**
+ * Device IDs of the app are lower case ("ahu"); a framework may use other
+ * spellings ("AHU"). All IDs coming from the model server are matched this way.
+ */
+export const canonicalId = (id) => String(id).toLowerCase();
+
+const remapKeys = (object) => Object.fromEntries(Object.entries(object ?? {}).map(([k, v]) => [canonicalId(k), v]));
+
 /** Asks the local server which models exist. Never throws: no server = no models. */
 export async function loadExternalModels() {
   try {
     const response = await fetch("api/models", { cache: "no-store" });
     if (!response.ok) return { available: false, reason: "no model server", models: [] };
-    return await response.json();
+    const result = await response.json();
+    for (const m of result.models ?? []) {
+      m.devices = (m.devices ?? []).map(canonicalId);
+      m.thresholds = remapKeys(m.thresholds);
+    }
+    return result;
   } catch {
     return { available: false, reason: "no model server", models: [] };
   }
@@ -42,6 +55,7 @@ export async function requestDisaggregation(model, records, { dateOfDay, timezon
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(payload.error || `model server error ${response.status}`);
+  payload.devices = remapKeys(payload.devices);
   return payload;
 }
 

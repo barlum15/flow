@@ -331,6 +331,7 @@ The *Model* field in the load disaggregation panel lists the built-in FHMM (alwa
 - Window models that estimate the middle of their window (e.g. Seq2Point, `center: true`): the last `window/2` minutes are **provisional**, drawn faded in the chart and not counted in the accuracy figures.
 - On/off accuracy uses the model's own on/off thresholds.
 - External models keep estimating devices that are switched off in the house; those rows are greyed out and marked *not in house*.
+- Device IDs from the model server are matched case-insensitively (e.g. the framework's `AHU` is the app's `ahu`).
 - On training days the panel warns that a trained model's accuracy is optimistic.
 - Switching back to the built-in model recalculates the day with it.
 
