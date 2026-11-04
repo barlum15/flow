@@ -158,7 +158,16 @@ def to_time_index(index, source_tz: str) -> pd.DatetimeIndex:
     return index.tz_convert("UTC")
 
 
-def frame_to_watts(frame: pd.DataFrame, wanted: str | None, source_tz: str, time_col=None) -> pd.Series:
+def pick_reactive_columns(columns) -> list:
+    """Chooses the column(s) holding reactive power (var). Per-phase columns are summed."""
+    hits = [c for c in columns if "reactive" in str(c).lower() and "power" in str(c).lower()]
+    if hits:
+        return hits
+    return [c for c in columns if str(c).lower() in {"q", "var", "vars", "reactive_power"}]
+
+
+def frame_to_pq(frame: pd.DataFrame, wanted: str | None, source_tz: str, time_col=None) -> pd.DataFrame:
+    """Returns a frame with column P (active power, W) and, if present, Q (reactive power, var)."""
     if time_col is not None:
         frame = frame.set_index(time_col)
     elif not isinstance(frame.index, pd.DatetimeIndex):
@@ -166,14 +175,19 @@ def frame_to_watts(frame: pd.DataFrame, wanted: str | None, source_tz: str, time
             if any(k in str(candidate).lower() for k in ("time", "date", "timestamp")):
                 frame = frame.set_index(candidate)
                 break
-    columns = pick_power_columns(frame.columns, wanted)
-    watts = frame[columns].apply(pd.to_numeric, errors="coerce").sum(axis=1, min_count=1)
-    watts.index = to_time_index(frame.index, source_tz)
-    return watts
+    def total(columns):
+        return frame[columns].apply(pd.to_numeric, errors="coerce").sum(axis=1, min_count=1)
+
+    result = pd.DataFrame({"P": total(pick_power_columns(frame.columns, wanted))})
+    reactive = pick_reactive_columns(frame.columns)
+    if reactive:
+        result["Q"] = total(reactive)
+    result.index = to_time_index(frame.index, source_tz)
+    return result
 
 
-def read_minutes(path: Path, key: str | None, wanted: str | None, source_tz: str) -> tuple[pd.Series, str]:
-    """Returns per-minute average watts (UTC index) and a short description."""
+def read_minutes(path: Path, key: str | None, wanted: str | None, source_tz: str) -> tuple[pd.DataFrame, str]:
+    """Returns per-minute averages (UTC index) of P and, if present, Q, and the HDF key used."""
     with pd.HDFStore(path, mode="r") as store:
         keys = store.keys()
         if not keys:
@@ -182,25 +196,25 @@ def read_minutes(path: Path, key: str | None, wanted: str | None, source_tz: str
         storer = store.get_storer(key)
         sums, counts = [], []
 
-        def add(watts: pd.Series):
-            watts = watts.dropna()
-            if watts.empty:
+        def add(values: pd.DataFrame):
+            values = values.dropna(subset=["P"])
+            if values.empty:
                 return
-            grouped = watts.resample("1min")
+            grouped = values.resample("1min")
             sums.append(grouped.sum())
             counts.append(grouped.count())
 
         if getattr(storer, "is_table", False):
             for chunk in store.select(key, chunksize=CHUNK_ROWS):
                 frame = chunk.to_frame() if isinstance(chunk, pd.Series) else chunk
-                add(frame_to_watts(frame, wanted, source_tz))
+                add(frame_to_pq(frame, wanted, source_tz))
         else:
             data = store.get(key)
             frame = data.to_frame() if isinstance(data, pd.Series) else data
-            add(frame_to_watts(frame, wanted, source_tz))
+            add(frame_to_pq(frame, wanted, source_tz))
 
     if not sums:
-        return pd.Series(dtype=float), key
+        return pd.DataFrame(columns=["P"], dtype=float), key
     total = pd.concat(sums).groupby(level=0).sum()
     count = pd.concat(counts).groupby(level=0).sum()
     minutes = (total / count.replace(0, np.nan)).sort_index()
@@ -227,6 +241,8 @@ def inspect(files: list[Path], mapping: dict[str, str]) -> None:
                         print(f"  power column(s) chosen: {[str(c) for c in pick_power_columns(frame.columns, None)]}")
                     except SystemExit as exc:
                         print(f"  {exc}")
+                    reactive = pick_reactive_columns(frame.columns)
+                    print(f"  reactive power column(s): {[str(c) for c in reactive] or 'none'}")
                     print(frame.to_string(max_cols=8).replace("\n", "\n    "))
                     if isinstance(frame.index, pd.DatetimeIndex) and len(frame.index) > 1:
                         print(f"  first sample: {frame.index[0]}  interval: {frame.index[1] - frame.index[0]}")
@@ -253,7 +269,8 @@ def convert(args, files: list[Path], mapping: dict[str, str]) -> None:
     days_dir = out / "days"
     days_dir.mkdir(parents=True, exist_ok=True)
 
-    series: dict[str, pd.Series] = {}
+    series: dict[str, pd.Series] = {}  # active power (W) per device
+    reactive: dict[str, pd.Series] = {}  # reactive power (var) per device, if recorded
     sources: dict[str, dict] = {}
     for path in files:
         device = device_id_for(path, mapping)
@@ -269,16 +286,19 @@ def convert(args, files: list[Path], mapping: dict[str, str]) -> None:
             continue
         if device not in KNOWN_IDS:
             print(f"  ! '{device}' is not a device in data/devices.json - it is stored but not shown")
-        series[device] = minutes
+        series[device] = minutes["P"]
+        if "Q" in minutes:
+            reactive[device] = minutes["Q"]
         sources[device] = {"file": path.name, "key": key}
-        print(f"  {minutes.index[0]} .. {minutes.index[-1]}  ({minutes.notna().sum():,} minutes with data)")
+        print(f"  {minutes.index[0]} .. {minutes.index[-1]}  ({minutes['P'].notna().sum():,} minutes with data"
+              f"{', with reactive power' if 'Q' in minutes else ', no reactive power'})")
 
     if not series:
         sys.exit("Nothing imported.")
 
     # Local wall-clock minutes: every day has exactly 1440 slots. On DST days the
     # repeated hour is averaged and the skipped hour stays empty.
-    frame = pd.DataFrame(series)
+    frame = pd.DataFrame({**{f"P:{d}": v for d, v in series.items()}, **{f"Q:{d}": v for d, v in reactive.items()}})
     local = frame.index.tz_convert(args.timezone)
     frame["date"] = local.strftime("%Y-%m-%d")
     frame["minute"] = local.hour * 60 + local.minute
@@ -289,7 +309,7 @@ def convert(args, files: list[Path], mapping: dict[str, str]) -> None:
     # Converting to local time can leave a few minutes on an extra day at the
     # start or end of the recording (e.g. 1 January of the next year). Drop
     # such days when they hold less than a quarter of a day of data.
-    filled = frame.notna().any(axis=1).groupby(level="date").sum()
+    filled = frame[[f"P:{d}" for d in series]].notna().any(axis=1).groupby(level="date").sum()
     while len(dates) > 1 and filled.get(dates[0], 0) < 360:
         dates.pop(0)
     while len(dates) > 1 and filled.get(dates[-1], 0) < 360:
@@ -311,15 +331,18 @@ def convert(args, files: list[Path], mapping: dict[str, str]) -> None:
     coverage = {d: 0 for d in devices}
     for date in dates:
         day = frame.loc[date].reindex(range(1440))
-        payload = {"date": date, "devices": {}}
+        payload = {"date": date, "devices": {}, "reactive": {}}
         for device in devices:
-            values = day[device].to_numpy()
+            values = day[f"P:{device}"].to_numpy()
             coverage[device] += int(np.isfinite(values).sum())
             payload["devices"][device] = [None if not math.isfinite(v) else round(float(v), 1) for v in values]
+            if device in reactive:
+                q = day[f"Q:{device}"].to_numpy()
+                payload["reactive"][device] = [None if not math.isfinite(v) else round(float(v), 1) for v in q]
         (days_dir / f"{date}.json").write_text(json.dumps(payload, separators=(",", ":")))
 
     manifest = {
-        "format": "flow-recorded/1",
+        "format": "flow-recorded/2",
         "source": args.label or str(Path(args.inputs[0]).name),
         "created": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "timezone": args.timezone,
@@ -328,12 +351,14 @@ def convert(args, files: list[Path], mapping: dict[str, str]) -> None:
         "end": dates[-1],
         "days": dates,
         "devices": devices,
+        "reactive": [d for d in devices if d in reactive],  # devices with reactive power (var)
         "coverage": {d: round(coverage[d] / (1440 * len(dates)), 3) for d in devices},
         "files": sources,
     }
     (out / "manifest.json").write_text(json.dumps(manifest, indent=2))
     print(f"\nWrote {len(dates)} days ({dates[0]} .. {dates[-1]}) for {len(devices)} devices to {out}/")
     print("Coverage: " + ", ".join(f"{d} {manifest['coverage'][d]:.0%}" for d in devices))
+    print("Reactive power: " + (", ".join(manifest["reactive"]) or "none"))
     print("This folder is in .gitignore - do not commit or upload it.")
 
 

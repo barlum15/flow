@@ -800,6 +800,44 @@ main[data-zoom="nilm"] .nilm-body {
   cursor: grabbing;
 }
 
+/* Training / gap / test day of the external models */
+
+.split-badge {
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.split-badge[hidden] {
+  display: none;
+}
+
+.split-badge.split-train {
+  background: rgba(229, 165, 10, 0.18);
+  color: #a86f00;
+}
+
+.split-badge.split-gap {
+  background: var(--bg);
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+
+.split-badge.split-test {
+  background: rgba(43, 179, 107, 0.16);
+  color: #1d7f4c;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .split-badge.split-train { color: #f2c14e; }
+  :root:not([data-theme="light"]) .split-badge.split-test { color: #5ad19a; }
+}
+
+:root[data-theme="dark"] .split-badge.split-train { color: #f2c14e; }
+:root[data-theme="dark"] .split-badge.split-test { color: #5ad19a; }
+
 /* Data source */
 
 .source-control {

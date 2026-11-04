@@ -87,6 +87,7 @@ Then open http://localhost:8000 in your browser. A local web server is needed be
 | `src/nilm-view.js` | Load disaggregation panel (table and stacked chart) |
 | `src/style.css` | Styling (light and dark mode) |
 | `data/appliance-library.json` | Appliance library for the disaggregation (power states, spread, durations, transitions) |
+| `data/evaluation.json` | Training / gap / test periods of the external NILM models |
 | `data/devices.json` | Floor plan, smart meter position and devices (shape, plug position, daily consumption curve in watts) |
 
 ## How the Prototype Works
@@ -231,7 +232,8 @@ py tools\import_h5.py data\raw\building_1 --label "SmartNIALMeter building 1"
 
 At the end the script prints `Wrote … days … to …/data/real/`. Run it again whenever the `.h5` files change; it replaces the earlier import.
 
-- Per-phase active power columns (e.g. `active power L1/L2/L3`) are summed; reactive and apparent power are ignored. Use `--column` to choose columns yourself.
+- Per-phase active power columns (e.g. `active power L1/L2/L3`) are summed; apparent power is ignored. Use `--column` to choose the active power columns yourself.
+- **Reactive power** (`Reactive Power`, var) is exported too when a file has it. The smart meter then sums active **and** reactive power, and the smart meter panel shows *Reactive power*. Several external NILM models need both (see below). Imports made before this change contain active power only: run the import again to add reactive power.
 - File names are mapped to device IDs (`fridge_freezer.h5` → `fridge`, …). Use `--map name=id` to override, `--only` to import some devices, `--start`/`--end` to limit the period.
 - Samples are averaged per minute and stored per local day (`--timezone`, default `Europe/Zurich`; timestamps without a time zone are read as `--source-tz`, default UTC). On daylight saving days the skipped hour stays empty and the repeated hour is averaged.
 - Output: `data/real/manifest.json` and one file per day in `data/real/days/`. The app loads only the days it needs.
@@ -247,6 +249,10 @@ Example layout of one file (`coffee_maker.h5`, pandas HDFStore, fixed format):
 | `data/block0_values` | (6307200, 2) | active power (W), reactive power (var) |
 
 Converting one such year takes a few seconds and about 0.5 GB of memory per file.
+
+**Training, gap and test days**
+
+`data/evaluation.json` holds the chronological holdout split used to train the external NILM models: training 2019-01-01 – 2019-10-19, gap 2019-10-20 – 2019-10-26, test 2019-10-27 – 2019-12-31. With recorded data the header marks the current day as *Training day*, *Gap day* or *Test day*. On training days, trained models have seen the data, so their accuracy is optimistic; the test period gives a fair evaluation.
 
 **4. Start the server in the project folder and open the app**
 

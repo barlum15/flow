@@ -21,12 +21,14 @@ async function fetchJson(url) {
 }
 
 async function loadData() {
-  const [data, library, recorded] = await Promise.all([
+  const [data, library, recorded, evaluation] = await Promise.all([
     fetchJson("data/devices.json"),
     fetchJson("data/appliance-library.json"),
     RecordedSource.load(), // null when data/real/ holds no imported data
+    fetchJson("data/evaluation.json").catch(() => ({ periods: [] })),
   ]);
   return {
+    evaluation,
     devices: data.devices.map((d) => new Device(d)),
     layout: { house: data.house, meter: data.meter },
     library,
@@ -70,7 +72,10 @@ function buildDeviceList(container, devices, onChange) {
 }
 
 async function start() {
-  const { devices, layout, library, recorded } = await loadData();
+  const { devices, layout, library, recorded, evaluation } = await loadData();
+
+  /** Training / gap / test period of a date (YYYY-MM-DD), or null. */
+  const periodOf = (date) => evaluation.periods.find((p) => date >= p.start && date <= p.end) ?? null;
   const sources = { mock: new MockSource(), ...(recorded ? { recorded } : {}) };
   const view = new HouseView(document.getElementById("house"), devices, layout);
 
@@ -226,7 +231,7 @@ async function start() {
         metricsDay = day;
       }
       if (truth) metrics.add(record.t, result, truth);
-      nilmView.push(record.t, result, truth);
+      nilmView.push(record.t, result, truth, record.vars);
       lastFedMinute = record.t;
       latest = { result, truth };
       lastFed = latest;
@@ -328,9 +333,28 @@ async function start() {
       : null;
     setText($("day"), recalculating ?? (waiting ? "Loading…" : dayText));
     if (source.kind === "recorded" && document.activeElement !== dateJump) dateJump.value = source.dateOf(dayIndex);
+
+    // Training / gap / test day of the external NILM models (recorded data only).
+    const period = source.kind === "recorded" ? periodOf(source.dateOf(dayIndex)) : null;
+    const splitBadge = $("split-badge");
+    splitBadge.hidden = !period;
+    if (period) {
+      setText(splitBadge, period.label);
+      splitBadge.className = `split-badge split-${period.kind}`;
+      splitBadge.title =
+        period.kind === "train"
+          ? `Trained models saw this day (training ${period.start} – ${period.end}): their accuracy here is optimistic.`
+          : period.kind === "test"
+            ? `Test period ${period.start} – ${period.end}: not seen in training, a fair evaluation.`
+            : `Gap between training and test (${period.start} – ${period.end}).`;
+    }
     // While a minute is selected, the readout shows the power of that minute.
     setText($("power-label"), selected ? `Power at ${formatTime(selected.t % MINUTES_PER_DAY)}` : "Current power");
     setText($("total"), Math.round(selected ? selected.total : meter.total).toLocaleString("en-US"));
+    $("reactive-stat").hidden = !source.hasReactive;
+    if (source.hasReactive) {
+      setText($("reactive"), Math.round(selected ? selected.vars : meter.totalReactive).toLocaleString("en-US"));
+    }
     setText($("energy"), meter.energyKWh.toFixed(2));
     setText($("peak"), Math.round(meter.peakW).toLocaleString("en-US"));
     setText($("reading"), formatReading(meter.readingKWh));

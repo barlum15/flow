@@ -16,6 +16,7 @@ export class MockSource {
   constructor() {
     this.kind = "mock";
     this.label = "Mock data";
+    this.hasReactive = false; // the mock curves have no reactive power
     this.startTime = 6 * 60; // 06:00 on day 1
   }
 
@@ -31,6 +32,10 @@ export class MockSource {
 
   powerAt(device, time) {
     return sampleCurve(device.curve, (time % MINUTES_PER_DAY) / 60);
+  }
+
+  reactiveAt() {
+    return 0;
   }
 
   dayLabel(dayIndex) {
@@ -57,6 +62,8 @@ export class RecordedSource {
     this.manifest = manifest;
     this.days = manifest.days;
     this.devices = new Set(manifest.devices);
+    // Reactive power exists from import format 2 on; older imports have none.
+    this.hasReactive = Array.isArray(manifest.reactive) && manifest.reactive.length > 0;
     this.label = manifest.source || "Recorded data";
     this.startTime = 6 * 60; // 06:00 on the first recorded day
     this.cache = new Map(); // day index -> { status, data }
@@ -149,6 +156,13 @@ export class RecordedSource {
     if (!values) return 0;
     const value = values[Math.floor(time % MINUTES_PER_DAY)];
     return value == null || value < 0 ? 0 : value; // gaps count as 0 W
+  }
+
+  /** Reactive power (var) of a device at a simulation time; 0 when not recorded. */
+  reactiveAt(device, time) {
+    const entry = this.cache.get(this.dayIndex(time));
+    const value = entry?.data?.reactive?.[device.id]?.[Math.floor(time % MINUTES_PER_DAY)];
+    return value == null ? 0 : value; // gaps count as 0 var
   }
 
   /** Date (YYYY-MM-DD) shown on simulation day `simDay`. */

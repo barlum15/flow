@@ -24,12 +24,14 @@ export class Device {
     Object.assign(this, appearance); // wall, plug, color, boxes (used by the view)
     this.enabled = true;
     this.power = 0; // current draw in watts
+    this.reactive = 0; // current reactive power in var (only with recorded data)
   }
 
   /** Sets the current draw (from the data source) and requests it from the smart meter. */
-  update(power, meter) {
+  update(power, meter, reactive = 0) {
     this.power = this.enabled ? power : 0;
-    if (this.power > 0) meter.request(this.power);
+    this.reactive = this.enabled ? reactive : 0;
+    if (this.power > 0 || this.reactive !== 0) meter.request(this.power, this.reactive);
   }
 }
 
@@ -39,21 +41,28 @@ export class SmartMeter {
     this.maxRecords = Math.ceil((keepDays * MINUTES_PER_DAY) / recordIntervalMinutes);
 
     this.pending = 0; // sum of requests in the current tick
+    this.pendingReactive = 0;
     this.total = 0; // last summed total in watts
+    this.totalReactive = 0; // last summed reactive power in var
 
     this.readingKWh = 0; // meter reading: total energy since installation
     this.energyKWh = 0; // energy of the current day
     this.peakW = 0; // highest total of the current day
 
-    this.records = []; // stored totals: { t, watts } (average watts per interval)
+    this.records = []; // stored totals: { t, watts, vars } (averages per interval)
     this.slot = null; // start of the interval being recorded
     this.slotWattMinutes = 0;
+    this.slotVarMinutes = 0;
     this.slotMinutes = 0;
   }
 
-  /** Devices call this. The meter does not know who is asking - only how much. */
-  request(watts) {
+  /**
+   * Devices call this. The meter does not know who is asking - only how much
+   * active power (W) and, with recorded data, reactive power (var).
+   */
+  request(watts, vars = 0) {
     this.pending += watts;
+    this.pendingReactive += vars;
   }
 
   /**
@@ -65,6 +74,8 @@ export class SmartMeter {
   commit(time, minutes) {
     this.total = this.pending;
     this.pending = 0;
+    this.totalReactive = this.pendingReactive;
+    this.pendingReactive = 0;
 
     const kWh = (this.total * minutes) / 60 / 1000;
     this.readingKWh += kWh;
@@ -75,15 +86,21 @@ export class SmartMeter {
     if (this.slot !== null && slot !== this.slot) this.closeSlot();
     this.slot = slot;
     this.slotWattMinutes += this.total * minutes;
+    this.slotVarMinutes += this.totalReactive * minutes;
     this.slotMinutes += minutes;
   }
 
   closeSlot() {
     if (this.slotMinutes > 0) {
-      this.records.push({ t: this.slot, watts: this.slotWattMinutes / this.slotMinutes });
+      this.records.push({
+        t: this.slot,
+        watts: this.slotWattMinutes / this.slotMinutes,
+        vars: this.slotVarMinutes / this.slotMinutes,
+      });
       if (this.records.length > this.maxRecords) this.records.splice(0, this.records.length - this.maxRecords);
     }
     this.slotWattMinutes = 0;
+    this.slotVarMinutes = 0;
     this.slotMinutes = 0;
   }
 
@@ -146,7 +163,9 @@ export class Simulation {
   /** Advances simulated time by the given number of minutes. */
   step(minutes) {
     const start = this.time;
-    for (const device of this.devices) device.update(this.source.powerAt(device, start), this.meter);
+    for (const device of this.devices) {
+      device.update(this.source.powerAt(device, start), this.meter, this.source.reactiveAt?.(device, start) ?? 0);
+    }
     this.meter.commit(start, minutes);
     this.recordTruth(start, minutes);
 

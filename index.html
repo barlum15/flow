@@ -33,6 +33,7 @@
           Repeat day
         </label>
         <span id="day" class="pill">Day 1</span>
+        <span id="split-badge" class="split-badge" hidden></span>
         <span id="clock" class="clock">06:00</span>
         <button id="play" type="button">Pause</button>
         <label>
@@ -109,6 +110,10 @@
             <div>
               <span class="stat-label">Meter reading</span>
               <span class="stat-value counter"><span id="reading">00000.000</span><span class="unit">kWh</span></span>
+            </div>
+            <div id="reactive-stat" hidden>
+              <span class="stat-label">Reactive power</span>
+              <span class="stat-value"><span id="reactive">0</span><span class="unit">var</span></span>
             </div>
           </div>
         </div>

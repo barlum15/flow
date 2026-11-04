@@ -1,0 +1,8 @@
+{
+  "description": "Chronological holdout split used to train the external NILM models (see README). Days in the training period were seen by those models, so their accuracy there is optimistic.",
+  "periods": [
+    { "kind": "train", "label": "Training day", "start": "2019-01-01", "end": "2019-10-19" },
+    { "kind": "gap", "label": "Gap day", "start": "2019-10-20", "end": "2019-10-26" },
+    { "kind": "test", "label": "Test day", "start": "2019-10-27", "end": "2019-12-31" }
+  ]
+}

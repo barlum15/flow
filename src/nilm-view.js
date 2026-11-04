@@ -26,7 +26,7 @@ function make(tag, className, parent, text) {
 export class NilmView {
   constructor(root, appliances) {
     this.root = root;
-    this.history = []; // { t, total, parts: { id: watts }, residual, result, truth }
+    this.history = []; // { t, total, vars, parts: { id: watts }, residual, result, truth }
     this.selectedT = null; // minute shown in the table while inspecting
     this.onSelect = null; // called when the user picks a point in time
     this.layout = null; // last chart geometry, used to map clicks to minutes
@@ -150,10 +150,11 @@ export class NilmView {
   }
 
   /** Stores one disaggregation result (one minute) for the chart and for inspection. */
-  push(t, result, truth) {
+  push(t, result, truth, vars = 0) {
     this.history.push({
       t,
       total: result.total,
+      vars, // reactive power of the smart meter in that minute
       parts: Object.fromEntries(result.appliances.map((a) => [a.id, a.estimate])),
       residual: Math.max(0, result.residual), // only the unexplained (positive) part is stacked
       result,
