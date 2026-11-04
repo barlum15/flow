@@ -204,9 +204,14 @@ export class FhmmDisaggregator {
  * (which the algorithm never sees).
  */
 export class NilmMetrics {
-  constructor({ windowMinutes = 1440, onThresholdW = 5 } = {}) {
+  /**
+   * @param {{ windowMinutes?: number, onThresholdW?: number, thresholds?: Record<string, number> }} options
+   *   thresholds: on/off threshold per device (W), e.g. from an external model
+   */
+  constructor({ windowMinutes = 1440, onThresholdW = 5, thresholds = {} } = {}) {
     this.windowMinutes = windowMinutes;
     this.onThresholdW = onThresholdW;
+    this.thresholds = thresholds;
     this.entries = [];
     this.sums = { correct: 0, count: 0, absError: 0, trueEnergy: 0 };
   }
@@ -215,12 +220,17 @@ export class NilmMetrics {
     const entry = { t, correct: 0, count: 0, absError: 0, trueEnergy: 0 };
     for (const a of result.appliances) {
       const actual = truth[a.id] ?? 0;
-      const predictedOn = a.pOn >= 0.5;
-      const actualOn = actual > this.onThresholdW;
-      entry.correct += predictedOn === actualOn ? 1 : 0;
-      entry.count += 1;
-      entry.absError += Math.abs(a.estimate - actual);
-      entry.trueEnergy += actual;
+      if (a.pOn != null) {
+        const predictedOn = a.pOn >= 0.5;
+        const actualOn = actual > (this.thresholds[a.id] ?? this.onThresholdW);
+        entry.correct += predictedOn === actualOn ? 1 : 0;
+        entry.count += 1;
+      }
+      // Energy accuracy only for models that estimate power.
+      if (a.estimate != null) {
+        entry.absError += Math.abs(a.estimate - actual);
+        entry.trueEnergy += actual;
+      }
     }
     this.entries.push(entry);
     this.apply(entry, 1);

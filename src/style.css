@@ -545,6 +545,56 @@ main[data-zoom="nilm"] .nilm-body {
   font-size: 13px;
 }
 
+.model-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.model-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.model-control select {
+  height: 32px;
+  max-width: 320px;
+  font-size: 13px;
+}
+
+.model-status {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.nilm-notice {
+  margin: 8px 0 0;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(229, 165, 10, 0.14);
+  font-size: 12px;
+}
+
+.nilm-notice[hidden] {
+  display: none;
+}
+
+.nilm-row.not-in-house {
+  opacity: 0.45;
+}
+
+.nilm-row.not-in-house .nilm-name::after {
+  content: "not in house";
+  margin-left: 6px;
+  font-size: 11px;
+  font-weight: 400;
+}
+
 .nilm-kpis {
   display: flex;
   flex-wrap: wrap;

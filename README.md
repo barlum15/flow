@@ -78,6 +78,7 @@ Then open http://localhost:8000 in your browser. A local web server is needed be
 | `src/main.js` | Loads data and runs the animation loop |
 | `src/theme.js` | Light/dark mode switch |
 | `src/zoom.js` | Zoom into a single panel and back to the overview |
+| `src/external-models.js` | Talks to the model server and converts its answers for the table |
 | `src/chart-zoom.js` | Shared time-axis zoom of the smart meter and disaggregation charts |
 | `src/data-source.js` | Data sources: mock curves or recorded data from `data/real/` |
 | `tools/serve.py` | Local web server (no browser caching) and API for external NILM models |
@@ -316,10 +317,22 @@ Without this file the API answers "not configured" and the app uses its built-in
 
 **Adapters**
 
-- `tools/nilm_adapter_demo.py`: two small demo models (combinatorial optimization with P only, and with P + Q and probabilities) to test the whole chain without trained models. Use `{"adapter": "tools/nilm_adapter_demo.py", "settings": {}}` as `models/config.json`.
+- `tools/nilm_adapter_demo.py`: three small demo models (combinatorial optimization with P only, with P + Q and probabilities, and with a centred 99-minute window) to test the whole chain without trained models. Use `{"adapter": "tools/nilm_adapter_demo.py", "settings": {}}` as `models/config.json`.
 - `tools/nilm_adapter_template.py`: template for the real framework. Copy it to `models/serve_adapter.py` and fill in the places marked `TODO` (decode step of the state-space models, feature step of the classifiers, inference of the PyTorch models). It already lists all models of the framework's specification with their inputs and outputs and loads each pickle once.
 
-The server needs `pandas` (and `numpy`) in the Python it runs with, plus whatever your models need (hmmlearn, scikit-learn, torch, …). Selecting a model in the app is the next step (phase 4).
+The server needs `pandas` (and `numpy`) in the Python it runs with, plus whatever your models need (hmmlearn, scikit-learn, torch, …).
+
+**Choosing a model in the app**
+
+The *Model* field in the load disaggregation panel lists the built-in FHMM (always available, computed in the browser) and, grouped, every model of the model server. Models that cannot run are disabled: *(not available)* when their file is missing, *(needs reactive power)* when the data source has no reactive power (e.g. the mock data).
+
+- The app sends the smart meter minutes of the current day (plus a few minutes of the previous day to fill input windows) and replaces the estimates of the whole day with each answer, at most about once per second. Window models and Viterbi decoding may still change earlier minutes, so nothing is appended.
+- The table adapts to what a model delivers: *P(on)* in % for models with probabilities, *on/off* for models without; *Estimate* shows `–` for classifiers without a power estimate, and *Residual* and *Energy accuracy* are then not available. *Model confidence* is only shown for the built-in model.
+- Window models that estimate the middle of their window (e.g. Seq2Point, `center: true`): the last `window/2` minutes are **provisional**, drawn faded in the chart and not counted in the accuracy figures.
+- On/off accuracy uses the model's own on/off thresholds.
+- External models keep estimating devices that are switched off in the house; those rows are greyed out and marked *not in house*.
+- On training days the panel warns that a trained model's accuracy is optimistic.
+- Switching back to the built-in model recalculates the day with it.
 
 ## Isometric View
 

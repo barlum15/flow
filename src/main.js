@@ -7,6 +7,7 @@ import { NilmView } from "./nilm-view.js";
 import { initZoom } from "./zoom.js";
 import { MockSource, RecordedSource } from "./data-source.js";
 import { TimeZoom, wasDrag } from "./chart-zoom.js";
+import { loadExternalModels, requestDisaggregation, toResults } from "./external-models.js";
 
 initThemeSwitch(document.getElementById("theme-switch"));
 initZoom(document.querySelector("main"));
@@ -73,6 +74,7 @@ function buildDeviceList(container, devices, onChange) {
 
 async function start() {
   const { devices, layout, library, recorded, evaluation } = await loadData();
+  const external = await loadExternalModels(); // models served by tools/serve.py, if configured
 
   /** Training / gap / test period of a date (YYYY-MM-DD), or null. */
   const periodOf = (date) => evaluation.periods.find((p) => date >= p.start && date <= p.end) ?? null;
@@ -106,6 +108,136 @@ async function start() {
   // when the source changes or when jumping to another recorded day.
   let source, meter, sim, nilm, metrics, metricsDay, lastFedMinute;
 
+  // ---- Disaggregation model: built-in FHMM (in the browser) or an external one ----
+  const modelSelect = $("model-select");
+  const modelsById = Object.fromEntries(external.models.map((m) => [m.id, m]));
+  let model = null; // null = built-in FHMM
+  let ext = { busy: false, sentLastT: null, sentAt: 0, error: null, token: 0, notice: null };
+
+  const BUILTIN_SUBTITLE = $("nilm-subtitle").textContent.trim();
+  const applianceInfo = (id) => {
+    const a = library.appliances.find((x) => x.id === id);
+    return { id, name: a?.name ?? id, color: a?.color ?? "#8a93a3" };
+  };
+
+  // Model list, grouped as in the framework; models that cannot run are disabled.
+  {
+    const groups = new Map();
+    for (const m of external.models) {
+      if (!groups.has(m.group)) {
+        const group = document.createElement("optgroup");
+        group.label = m.group || "External models";
+        groups.set(m.group, group);
+        modelSelect.append(group);
+      }
+      const option = document.createElement("option");
+      option.value = m.id;
+      groups.get(m.group).append(option);
+    }
+    modelSelect.title = external.available
+      ? "Built-in model or a trained model from the local model server"
+      : `Only the built-in model: ${external.reason || "no model server"} (see README, External NILM Models)`;
+  }
+
+  function refreshModelOptions() {
+    for (const option of modelSelect.options) {
+      const m = modelsById[option.value];
+      if (!m) continue;
+      const needsQ = m.needsReactive && !source.hasReactive;
+      option.disabled = m.available === false || needsQ;
+      option.textContent = m.name + (m.available === false ? " (not available)" : needsQ ? " (needs reactive power)" : "");
+      option.title = m.available === false ? m.reason || "" : needsQ ? "Needs recorded data with reactive power" : "";
+    }
+    if (model && model.needsReactive && !source.hasReactive) {
+      ext.notice = `${model.name} needs reactive power, which this data source does not have - switched to the built-in model.`;
+      model = null;
+      modelSelect.value = "";
+    }
+  }
+
+  /** Prepares the table for the current model (called whenever the simulation restarts). */
+  function setupEngine() {
+    if (!model) {
+      rebuildDisaggregation();
+      return;
+    }
+    nilm = null;
+    const notInHouse = new Set(devices.filter((d) => !d.enabled).map((d) => d.id));
+    nilmView.setAppliances(model.devices.map(applianceInfo), { notInHouse, thresholds: model.thresholds ?? {} });
+    ext = { ...ext, busy: false, sentLastT: null, error: null, token: ext.token + 1 };
+  }
+
+  /** Date (YYYY-MM-DD) of a simulation day, as the model server expects it. */
+  function dateOfDay(dayIndex) {
+    if (source.kind === "recorded") return source.dateOf(dayIndex);
+    return new Date(Date.UTC(2019, 10, 4 + dayIndex)).toISOString().slice(0, 10); // mock data: any date
+  }
+
+  // External models re-estimate the whole day at once (window models and
+  // Viterbi decoding may still change earlier minutes), at most about once per
+  // second and never while the day is being recalculated.
+  function maybeRequestExternal() {
+    if (!model || recompute || ext.busy) return;
+    const records = meter.records;
+    if (!records.length) return;
+    const lastT = records[records.length - 1].t;
+    if (lastT === ext.sentLastT || performance.now() - ext.sentAt < 1000) return;
+
+    const window = Math.max(1, model.window ?? 1);
+    const dayStart = lastT - (lastT % MINUTES_PER_DAY);
+    const send = records.filter((r) => r.t >= dayStart - window); // a little of the previous day to fill windows
+    const token = ext.token;
+    ext.busy = true;
+    ext.sentAt = performance.now();
+    ext.sentLastT = lastT;
+    requestDisaggregation(model, send, {
+      dateOfDay,
+      timezone: source.manifest?.timezone ?? "Europe/Zurich",
+      withReactive: source.hasReactive,
+    })
+      .then((answer) => {
+        if (token !== ext.token) return; // model or day changed meanwhile
+        ext.error = null;
+        applyExternal(answer, send);
+      })
+      .catch((error) => {
+        if (token === ext.token) ext.error = error.message;
+      })
+      .finally(() => {
+        if (token === ext.token) ext.busy = false;
+      });
+  }
+
+  function applyExternal(answer, send) {
+    const results = toResults(model, answer, send, model.devices.map(applianceInfo));
+    const lastT = send[send.length - 1].t;
+    const dayStart = lastT - (lastT % MINUTES_PER_DAY);
+    // Window models estimate the middle of their window: the latest minutes are provisional.
+    const provisionalFrom = model.center ? lastT - Math.floor((model.window ?? 1) / 2) + 1 : null;
+
+    metrics = new NilmMetrics({ thresholds: model.thresholds ?? {} });
+    const entries = [];
+    send.forEach((record, i) => {
+      if (record.t < dayStart) return; // warm-up minutes of the previous day
+      const truth = sim.truth.get(record.t);
+      if (truth && (provisionalFrom === null || record.t < provisionalFrom)) metrics.add(record.t, results[i], truth);
+      entries.push({ t: record.t, result: results[i], truth, vars: record.vars });
+    });
+    nilmView.replaceHistory(entries, provisionalFrom);
+    const last = entries[entries.length - 1];
+    if (last) nilmView.update(last.result, last.truth, metrics, answer.ms ?? 0);
+  }
+
+  modelSelect.addEventListener("change", () => {
+    model = modelsById[modelSelect.value] ?? null;
+    ext.notice = null;
+    if (model) {
+      setupEngine(); // results arrive with the next answer of the model server
+    } else {
+      startRecompute(); // the built-in model has to run through the day again
+    }
+  });
+
   /**
    * (Re)starts the simulation. `keepSelection` keeps the devices the user has
    * switched on or off (used when the day is recalculated).
@@ -138,7 +270,8 @@ async function start() {
       dateJump.max = source.manifest.end;
     }
     source.prefetch(sim.time);
-    rebuildDisaggregation();
+    refreshModelOptions();
+    setupEngine();
   }
 
   // The disaggregation only models (and lists) the appliances that are
@@ -147,6 +280,7 @@ async function start() {
     const active = devices.filter((d) => d.enabled).map((d) => d.id);
     nilm = new FhmmDisaggregator(library, { only: active });
     nilmView.setAppliances(nilm.appliances);
+    nilmView.provisionalFrom = null;
   }
 
   // Data source selection
@@ -209,13 +343,14 @@ async function start() {
     }
     if (sim.time < recompute.target) return false;
     feedDisaggregation();
-    if (lastFed) nilmView.update(lastFed.result, lastFed.truth, metrics, nilm.lastUpdateMs); // fresh key figures
+    if (!model && lastFed) nilmView.update(lastFed.result, lastFed.truth, metrics, nilm.lastUpdateMs); // fresh key figures
     if (recompute.selected !== null) nilmView.select(recompute.selected);
     recompute = null;
     return true;
   }
 
   function feedDisaggregation({ render = true } = {}) {
+    if (model) return; // external models are asked for the whole day instead (maybeRequestExternal)
     const records = meter.records;
     let i = records.length;
     while (i > 0 && records[i - 1].t > lastFedMinute) i--;
@@ -287,6 +422,30 @@ async function start() {
     });
   }
 
+  const dayIndexNow = () => sim.day - 1;
+
+  /** Subtitle, status and notices of the disaggregation panel. */
+  function updateModelInfo(dayIndex) {
+    setText($("nilm-subtitle"), model ? `${model.name} · ${model.group} · ${model.trained ? "trained model, " : ""}computed by the local model server` : BUILTIN_SUBTITLE);
+    setText($("model-status"), !model ? "" : ext.busy ? "computing…" : ext.error ? "error" : "");
+
+    const notices = [];
+    if (ext.notice) notices.push(ext.notice);
+    if (model && ext.error) notices.push(`Model error: ${ext.error}`);
+    if (model?.trained && source.kind === "recorded" && periodOf(source.dateOf(dayIndex))?.kind === "train") {
+      notices.push("This model saw this day in training - its accuracy here is optimistic. Test days give a fair picture.");
+    }
+    if (model?.center && model.window > 1) {
+      notices.push(`Window model: the last ${Math.floor(model.window / 2)} minutes are provisional and are re-estimated as new readings arrive.`);
+    }
+    if (model && devices.some((d) => !d.enabled && model.devices.includes(d.id))) {
+      notices.push("Devices switched off in the house are still estimated by this model (shown as \"not in house\").");
+    }
+    const notice = $("nilm-notice");
+    notice.hidden = notices.length === 0;
+    setText(notice, notices.join(" "));
+  }
+
   let last = performance.now();
 
   function frame(now) {
@@ -312,6 +471,8 @@ async function start() {
     }
 
     feedDisaggregation();
+    maybeRequestExternal();
+    updateModelInfo(dayIndexNow());
 
     // While a minute is selected, the house shows the actual device power of
     // that minute, with the balls flowing at that minute's rate; otherwise the

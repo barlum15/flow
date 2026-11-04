@@ -58,13 +58,19 @@ export class NilmView {
    * Builds one table row per appliance. Only the appliances that are switched
    * on in the house are passed in, so the table and the chart stay focused.
    */
-  setAppliances(appliances) {
+  setAppliances(appliances, { notInHouse = new Set(), thresholds = {} } = {}) {
     this.appliances = appliances;
+    this.thresholds = thresholds; // on/off thresholds (W) for marking misses
     this.rows = new Map();
     this.table.replaceChildren();
 
     for (const a of appliances) {
       const row = make("div", "nilm-row", this.table);
+      if (notInHouse.has(a.id)) {
+        // External models keep estimating devices that are switched off in the house.
+        row.classList.add("not-in-house");
+        row.title = "Switched off in the house - the model still estimates it";
+      }
       const name = make("div", "nilm-name", row);
       make("span", "swatch", name).style.background = a.color;
       make("span", "", name, a.name);
@@ -103,6 +109,7 @@ export class NilmView {
   /** Forgets all results, e.g. after switching the data source or jumping to another day. */
   reset() {
     this.history = [];
+    this.provisionalFrom = null;
     this.latest = null;
     this.avgMs = undefined;
     this.clearSelection();
@@ -155,12 +162,26 @@ export class NilmView {
       t,
       total: result.total,
       vars, // reactive power of the smart meter in that minute
-      parts: Object.fromEntries(result.appliances.map((a) => [a.id, a.estimate])),
-      residual: Math.max(0, result.residual), // only the unexplained (positive) part is stacked
+      parts: Object.fromEntries(result.appliances.map((a) => [a.id, a.estimate ?? 0])),
+      residual: Math.max(0, result.residual ?? 0), // only the unexplained (positive) part is stacked
       result,
       truth,
     });
     if (this.history.length > 2 * 1440) this.history.shift();
+  }
+
+  /**
+   * Replaces all results at once (external models re-estimate the whole day).
+   * `provisionalFrom`: first minute whose estimate may still change, or null.
+   */
+  replaceHistory(entries, provisionalFrom = null) {
+    this.history = [];
+    for (const e of entries) this.push(e.t, e.result, e.truth, e.vars);
+    this.provisionalFrom = provisionalFrom;
+    if (this.selectedT !== null) {
+      const entry = this.entryAt(this.selectedT);
+      if (entry) this.render(entry.result, entry.truth);
+    }
   }
 
   /** Receives the latest live result. The table only follows it when not inspecting. */
@@ -172,7 +193,7 @@ export class NilmView {
     setText(this.energy, percent(metrics.energyAccuracy));
     // Browsers round performance.now(), so show a running average.
     this.avgMs = this.avgMs === undefined ? updateMs : this.avgMs * 0.95 + updateMs * 0.05;
-    setText(this.speed, this.avgMs < 0.1 ? "< 0.1 ms" : `${this.avgMs.toFixed(1)} ms`);
+    setText(this.speed, this.avgMs < 0.1 ? "< 0.1 ms" : this.avgMs >= 100 ? `${Math.round(this.avgMs)} ms` : `${this.avgMs.toFixed(1)} ms`);
   }
 
   /** Fills the table with one result. */
@@ -180,20 +201,28 @@ export class NilmView {
     for (const a of result.appliances) {
       const r = this.rows.get(a.id);
       if (!r) continue; // appliance no longer selected
-      const on = a.pOn >= 0.5;
+      // External models may lack a probability, a power estimate or an uncertainty.
+      const on = a.pOn !== null && a.pOn >= 0.5;
       r.row.classList.toggle("is-on", on);
-      setText(r.state, `${a.state} · ${Math.round(a.stateProbability * 100)} %`);
-      r.fill.style.width = `${(a.pOn * 100).toFixed(1)}%`;
-      setText(r.pText, `${Math.round(a.pOn * 100)} %`);
-      setText(r.estimate, a.estimate < 1 ? "0 W" : `${Math.round(a.estimate)} ± ${Math.round(a.sd)} W`);
+      setText(r.state, a.stateProbability == null ? a.state : `${a.state} · ${Math.round(a.stateProbability * 100)} %`);
+      r.fill.style.width = `${((a.pOn ?? 0) * 100).toFixed(1)}%`;
+      setText(r.pText, a.pOn == null ? "–" : a.binary ? (on ? "on" : "off") : `${Math.round(a.pOn * 100)} %`);
+      setText(
+        r.estimate,
+        a.estimate == null ? "–" : a.estimate < 1 ? "0 W" : a.sd == null ? `${Math.round(a.estimate)} W` : `${Math.round(a.estimate)} ± ${Math.round(a.sd)} W`,
+      );
 
       const actual = truth?.[a.id];
       setText(r.actual, actual === undefined ? "–" : `${Math.round(actual)} W`);
-      const hit = actual === undefined || (actual > 5) === on;
+      const hit = actual === undefined || a.pOn == null || (actual > (this.thresholds?.[a.id] ?? 5)) === on;
       r.actual.classList.toggle("miss", !hit);
     }
-    const rest = Math.round(result.residual);
-    setText(this.restEstimate, `${rest > 0 ? "+" : rest < 0 ? "−" : ""}${Math.abs(rest)} W`);
+    if (result.residual == null) {
+      setText(this.restEstimate, "–"); // model estimates no power
+    } else {
+      const rest = Math.round(result.residual);
+      setText(this.restEstimate, `${rest > 0 ? "+" : rest < 0 ? "−" : ""}${Math.abs(rest)} W`);
+    }
 
     setText(this.confidence, percent(result.confidence));
   }
@@ -311,6 +340,23 @@ export class NilmView {
       ctx.moveTo(Math.round(sx) + 0.5, pad.top);
       ctx.lineTo(Math.round(sx) + 0.5, pad.top + h);
       ctx.stroke();
+    }
+
+    // Minutes that a window model will still re-estimate are drawn faded.
+    if (this.provisionalFrom != null && points.length && this.provisionalFrom <= to) {
+      const start = Math.max(x(this.provisionalFrom), pad.left);
+      const end = x(points[points.length - 1].t + 1);
+      if (end > start) {
+        ctx.fillStyle = styles.getPropertyValue("--panel").trim();
+        ctx.globalAlpha = 0.6;
+        ctx.fillRect(start, pad.top, end - start, h);
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = muted;
+        ctx.font = "11px system-ui, sans-serif";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "top";
+        if (end - start > 60) ctx.fillText("provisional", start + 4, pad.top + 2);
+      }
     }
     ctx.restore();
 

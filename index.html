@@ -161,9 +161,19 @@
                 Showing <span id="nilm-snapshot-time">--:--</span> · paused, press Play to resume
               </span>
             </h2>
-            <p class="nilm-subtitle">
+            <div class="model-row">
+              <label class="model-control">
+                Model
+                <select id="model-select" aria-label="Disaggregation model">
+                  <option value="">Built-in FHMM (browser)</option>
+                </select>
+              </label>
+              <span id="model-status" class="model-status"></span>
+            </div>
+            <p id="nilm-subtitle" class="nilm-subtitle">
               Factorial HMM with online forward filter · uses only the smart meter readings and an appliance library
             </p>
+            <p id="nilm-notice" class="nilm-notice" hidden></p>
           </div>
           <div class="nilm-kpis">
             <div class="kpi" title="Probability of the most likely combination of appliance states">

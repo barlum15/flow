@@ -58,6 +58,18 @@ def list_models(settings):
             "thresholds": thresholds,
             "trained": False,
         },
+        {
+            "id": "demo-co-window",
+            "name": "Demo · CO with 99-minute window",
+            "group": "Demo",
+            "needsReactive": False,
+            "devices": devices,
+            "outputs": {"power": True, "on": True, "prob": False},
+            "window": 99,
+            "center": True,  # estimates the middle of the window, like Seq2Point
+            "thresholds": thresholds,
+            "trained": False,
+        },
     ]
 
 
@@ -72,6 +84,9 @@ def predict(model_id, frame, settings):
     """
     devices = list(NOMINAL)
     use_q = model_id == "demo-co-pq" and "Q" in frame
+    if model_id == "demo-co-window":
+        # Smooth the input with a centred 99-minute window (edges use what exists).
+        frame = frame.assign(P=frame["P"].rolling(99, center=True, min_periods=1).median())
 
     # All on/off combinations of the appliances (always-on ones fixed to on).
     combos = np.array([c for c in product((0, 1), repeat=len(devices))
