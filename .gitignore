@@ -7,6 +7,14 @@ data/real/
 *.hdf5
 *.hdf
 
+# Trained NILM models and their local configuration/adapter. Loading a pickle
+# runs code, and the models are not ours to publish: never commit them.
+models/
+*.pkl
+*.pickle
+*.pt
+*.pth
+
 # Python
 __pycache__/
 *.pyc

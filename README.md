@@ -80,7 +80,9 @@ Then open http://localhost:8000 in your browser. A local web server is needed be
 | `src/zoom.js` | Zoom into a single panel and back to the overview |
 | `src/chart-zoom.js` | Shared time-axis zoom of the smart meter and disaggregation charts |
 | `src/data-source.js` | Data sources: mock curves or recorded data from `data/real/` |
-| `tools/serve.py` | Local web server that disables browser caching |
+| `tools/serve.py` | Local web server (no browser caching) and API for external NILM models |
+| `tools/nilm_adapter_demo.py` | Demo models for testing the model API |
+| `tools/nilm_adapter_template.py` | Template adapter for the local NILM framework |
 | `tools/import_h5.py` | Converts recorded `.h5` files into `data/real/` (local only, never committed) |
 | `.gitignore` | Keeps `data/real/` and all `.h5` files out of the repository |
 | `src/disaggregation.js` | FHMM load disaggregation and accuracy metrics |
@@ -282,6 +284,42 @@ Devices without recorded data are switched off and greyed out. Gaps in the recor
 4. `ModuleNotFoundError: No module named 'tables'` (or `pandas`): install the requirements (step 1) for the same Python you run the script with.
 5. A file is imported under an unexpected name or "not a device in data/devices.json": rename the file to a device ID or use `--map original_name=device_id`. `--inspect` shows the mapping.
 6. "Could not find a power column": use `--column "Active Power"` (any part of the column name).
+
+## External NILM Models (.pkl)
+
+Trained models from a local NILM framework (e.g. hmmlearn, scikit-learn or PyTorch models stored as `.pkl`) can be connected through `tools/serve.py`. They run in Python on your machine; the browser only exchanges numbers with the local server.
+
+> **Models never go into the repository.** `models/`, `*.pkl`, `*.pt` and `*.pth` are in `.gitignore`. Loading a pickle runs code from the file: only load your own models.
+
+**How it fits together**
+
+```
+App (browser) ──GET /api/models──────► tools/serve.py ──► adapter (Python) ──► your framework + .pkl files
+              ──POST /api/disaggregate─►
+```
+
+- `GET /api/models` lists the models: name, group, whether they need reactive power, which devices they estimate, what they output (power, on/off, probability), window length and on/off thresholds.
+- `POST /api/disaggregate` takes the smart meter minutes of a day (`start`, `timezone`, `P`, and `Q` if available) and returns, per device and minute, `power`, `on` and `prob` (each may be `null` if the model does not produce it).
+- The server checks the model name, whether the model is available and whether it gets the reactive power it needs, and answers with a clear error otherwise.
+
+**Configuration** (`models/config.json`, local only)
+
+```json
+{
+  "adapter": "models/serve_adapter.py",
+  "framework_path": "C:/path/to/the/folder/containing/nilm_framework",
+  "settings": { "models_dir": "C:/path/to/the/models", "building": "building_1", "file_pattern": "{model}_model.pkl" }
+}
+```
+
+Without this file the API answers "not configured" and the app uses its built-in model.
+
+**Adapters**
+
+- `tools/nilm_adapter_demo.py`: two small demo models (combinatorial optimization with P only, and with P + Q and probabilities) to test the whole chain without trained models. Use `{"adapter": "tools/nilm_adapter_demo.py", "settings": {}}` as `models/config.json`.
+- `tools/nilm_adapter_template.py`: template for the real framework. Copy it to `models/serve_adapter.py` and fill in the places marked `TODO` (decode step of the state-space models, feature step of the classifiers, inference of the PyTorch models). It already lists all models of the framework's specification with their inputs and outputs and loads each pickle once.
+
+The server needs `pandas` (and `numpy`) in the Python it runs with, plus whatever your models need (hmmlearn, scikit-learn, torch, …). Selecting a model in the app is the next step (phase 4).
 
 ## Isometric View
 
