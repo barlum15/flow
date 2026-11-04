@@ -52,10 +52,18 @@ except ImportError:  # pragma: no cover - message for the user
     sys.exit("This script needs pandas and PyTables:  pip install pandas tables")
 
 # Device IDs used by the app (see data/devices.json).
-KNOWN_IDS = {
-    "ahu", "coffee_maker", "dishwasher", "electric_stove", "fridge",
-    "tumble_dryer", "washing_machine", "tv", "lighting",
-}
+def _known_ids() -> set[str]:
+    """Device IDs of the app, read from data/devices.json (so a new device only
+    has to be added there)."""
+    try:
+        devices = json.loads((Path(__file__).resolve().parent.parent / "data" / "devices.json").read_text("utf-8"))
+        return {d["id"] for d in devices["devices"]}
+    except (OSError, KeyError, ValueError):
+        return {"ahu", "coffee_maker", "dishwasher", "electric_stove", "fridge",
+                "tumble_dryer", "washing_machine", "tv", "lighting"}
+
+
+KNOWN_IDS = _known_ids()
 
 # Common alternative names -> app device ID.
 ALIASES = {

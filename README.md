@@ -49,11 +49,29 @@ Enerlyza is a **web app** that runs in any browser and also locally on your own 
 - A small backend (Node.js) with a real database (SQLite) for device curves and the smart meter's recorded totals
 - Optionally TypeScript and a build tool (Vite) once the project grows
 
-## Getting Started
+## Setup
+
+Enerlyza has up to three layers. Only the first one is required; each further layer is optional and builds on the previous one.
+
+| Layer | What you get | What you need |
+| --- | --- | --- |
+| 1. App with mock data | The whole app with placeholder consumption curves and the built-in disaggregation | A browser and Python 3 (only to run the local server) |
+| 2. Recorded data | Replay of real measurements (e.g. SmartNIALMeter `.h5` files) | Python packages `pandas`, `tables`, `h5py`; your `.h5` files |
+| 3. External NILM models | Your trained models (`.pkl`) in the disaggregation panel | The Python environment of your NILM framework; an adapter |
+
+All commands run in the project folder (`flow`, the repository name). On Windows use `py` (or `python`) and backslashes in paths, as shown in the Windows blocks.
+
+### 1. App with mock data
 
 ```bash
 git clone https://github.com/barlum15/flow.git
+```
+
+```bash
 cd flow
+```
+
+```bash
 python3 tools/serve.py
 ```
 
@@ -65,7 +83,38 @@ py tools\serve.py
 
 Then open http://localhost:8000 in your browser. A local web server is needed because browsers block loading `data/devices.json` from `file://`.
 
-`tools/serve.py` tells the browser not to cache any file, so a normal reload always shows the latest changes. With `python -m http.server` the browser may keep old JavaScript and CSS files: changes then only appear in a private window or after a hard reload (Ctrl+Shift+R, on macOS Cmd+Shift+R). If an old version still shows up once, do one hard reload or clear the cached files for localhost.
+- Always start the app with `tools/serve.py`. It tells the browser not to cache any file, so a normal reload always shows the latest changes, and it also provides the model API (layer 3). With `python -m http.server` the browser may keep old JavaScript and CSS files: changes then only appear in a private window or after a hard reload (Ctrl+Shift+R, on macOS Cmd+Shift+R). After switching servers, do one hard reload.
+- Another port: `python3 tools/serve.py 8080`.
+- The server only listens on `localhost`; nothing is reachable from other computers.
+
+### 2. Recorded data
+
+1. Copy the original `.h5` files into `data/raw/building_1/` (one file per device, named after the device ID).
+2. Install the requirements once: `pip install pandas tables h5py` (Windows: `py -m pip install pandas tables h5py`).
+3. Check the files: `python tools/import_h5.py --inspect data/raw/building_1`.
+4. Convert them: `python tools/import_h5.py data/raw/building_1 --label "SmartNIALMeter building 1"`.
+5. Start (or restart) `tools/serve.py` and reload the page. The *Data* selection in the header now offers the recorded data.
+
+Details, options and troubleshooting: [Using Recorded Data (.h5)](#using-recorded-data-h5).
+
+### 3. External NILM models
+
+1. Copy `tools/nilm_adapter_template.py` to `models/serve_adapter.py` and fill it in for your framework (or use your finished adapter).
+2. Create `models/config.json` with the adapter, the path of the folder that contains your framework, and where the model files are.
+3. Start `tools/serve.py` **with the Python of your framework** (the one where hmmlearn, scikit-learn, torch, … are installed). The console prints `Model adapter loaded` or the reason why not.
+4. Reload the page and choose a model in the *Model* field of the load disaggregation panel.
+
+To test the chain without trained models, use `{"adapter": "tools/nilm_adapter_demo.py", "settings": {}}` as `models/config.json`. Details: [External NILM Models (.pkl)](#external-nilm-models-pkl).
+
+### Things to keep in mind
+
+- **Never commit data or models.** `data/raw/`, `data/real/`, `models/` and all `*.h5`, `*.pkl`, `*.pt`, `*.pth` files are in `.gitignore`. The recorded data and the trained models are not ours to publish. Check `git status` before every commit.
+- **Loading a pickle runs code** from the file. Only load your own model files.
+- **Re-import after changes.** The app never reads `.h5` files directly; whenever the original files change, run `tools/import_h5.py` again. It replaces the earlier import.
+- **One Python for the server.** `tools/serve.py` imports your adapter and framework. Start it with the Python (virtual environment / conda environment) in which they work; `pandas` and `numpy` must be installed there too.
+- **Reload after restarting the server.** The page reads the list of recorded days and models when it loads.
+- **Time zone.** Recorded days are shown in local time (`Europe/Zurich` by default); the SmartNIALMeter timestamps are UTC and are converted during the import.
+- **Fair evaluation.** On training days (see `data/evaluation.json`) trained models have seen the data; judge them on test days.
 
 ## Project Structure
 
@@ -85,7 +134,7 @@ Then open http://localhost:8000 in your browser. A local web server is needed be
 | `tools/nilm_adapter_demo.py` | Demo models for testing the model API |
 | `tools/nilm_adapter_template.py` | Template adapter for the local NILM framework |
 | `tools/import_h5.py` | Converts recorded `.h5` files into `data/real/` (local only, never committed) |
-| `.gitignore` | Keeps `data/real/` and all `.h5` files out of the repository |
+| `.gitignore` | Keeps recorded data (`data/raw/`, `data/real/`, `*.h5`) and models (`models/`, `*.pkl`, `*.pt`, `*.pth`) out of the repository |
 | `src/disaggregation.js` | FHMM load disaggregation and accuracy metrics |
 | `src/nilm-view.js` | Load disaggregation panel (table and stacked chart) |
 | `src/style.css` | Styling (light and dark mode) |
@@ -334,6 +383,122 @@ The *Model* field in the load disaggregation panel lists the built-in FHMM (alwa
 - Device IDs from the model server are matched case-insensitively (e.g. the framework's `AHU` is the app's `ahu`).
 - On training days the panel warns that a trained model's accuracy is optimistic.
 - Switching back to the built-in model recalculates the day with it.
+
+## Changing the Power Data
+
+There are two kinds of power data: the **mock curves** (in the repository) and the **recorded data** (local only).
+
+### Mock curves (`data/devices.json`)
+
+Each device has a `curve`: the power in watts over one day, split into equal steps.
+
+- 24 values = one value per hour, 96 = every 15 minutes, 1440 = every minute. Any other length works too (the day is divided evenly).
+- Values are active power in watts (W). The mock data has no reactive power, so models that need it are disabled with mock data.
+- Every simulated day repeats the same curve.
+- After editing, reload the page (with `tools/serve.py` a normal reload is enough).
+- The built-in disaggregation does not see these curves. If a device's typical power changes a lot, update its states in `data/appliance-library.json` too, otherwise the built-in model looks for the old power levels.
+
+### Recorded data (`data/raw/` → `data/real/`)
+
+- Replace or add `.h5` files in `data/raw/<building>/` and run `tools/import_h5.py` again. Never edit the files in `data/real/` by hand; the import rewrites them.
+- Requirements for a file: a pandas HDF store with a time index and an active power column (per-phase columns are summed). Reactive power is used when present. `--inspect` shows what the script finds; `--column`, `--key`, `--map`, `--source-tz` handle other layouts.
+- The file name decides the device: `fridge.h5` → `fridge`. Unknown names are imported but not shown; rename the file or use `--map original_name=device_id`.
+- Timestamps without a time zone are read as UTC (`--source-tz`), the days are cut in local time (`--timezone`).
+- Another building: point the script at that folder. There is one import at a time; a new import replaces the previous one.
+- Another dataset with another training/test split: update the dates in `data/evaluation.json`, otherwise the *Training day* / *Test day* labels are wrong.
+- Devices without recorded data stay switched off (greyed out) while the recorded data is selected.
+
+## Adding a Device
+
+A new device (e.g. a heat pump with the ID `heat_pump`) touches the following places. Use the same lower-case ID everywhere.
+
+1. **`data/devices.json`** – required. Add an entry to `devices`:
+   ```json
+   {
+     "id": "heat_pump",
+     "name": "Heat pump",
+     "wall": "back",
+     "plug": { "x": 10.5, "y": 1.0 },
+     "color": "#cfd6df",
+     "boxes": [[10.1, 0.3, 0, 10.9, 1.0, 1.4]],
+     "curve": [400, 400, 300, 300, 300, 400, 900, 1200, 800, 500, 400, 300, 300, 300, 300, 400, 600, 900, 1200, 1000, 800, 600, 500, 400]
+   }
+   ```
+   - Place the boxes in a free spot along the back wall (`"wall": "back"`, small `y`) or the left wall (`"wall": "left"`, small `x`) and inside the floor (`house.width` × `house.depth`, in meters). The coordinates are described in [Isometric View](#isometric-view).
+   - `plug` is where the cable enters: on the front face of the box (`y` = the box's `y1` for the back wall, `x` = `x1` for the left wall). For back-wall devices the plug's `x` must be larger than the cable lanes (about 1.4–2.5 m from the left wall), otherwise the cable has no room.
+   - Optional: `details` (doors, windows, seams) and `"glow": true` on a box.
+   - Reload the page and check that the cable, the label and the device do not overlap others. If space runs out, make the house wider (`house.width`) and adjust the rooms.
+   - The device then appears in the house, in the device chips and in the smart meter sum.
+
+2. **`data/appliance-library.json`** – needed for the built-in disaggregation. Add an appliance with the same `id`, a `name`, a `color` for the chart, and its power `states`:
+   ```json
+   {
+     "id": "heat_pump",
+     "name": "Heat pump",
+     "color": "#d4527a",
+     "states": [
+       { "name": "Off", "power": 0, "sd": 2, "duration": 120, "next": { "Low": 0.7, "High": 0.3 } },
+       { "name": "Low", "power": 400, "sd": 60, "duration": 180, "next": { "Off": 0.5, "High": 0.5 } },
+       { "name": "High", "power": 1100, "sd": 150, "duration": 90, "next": { "Low": 0.7, "Off": 0.3 } }
+     ]
+   }
+   ```
+   - `power` and `sd` in watts, `duration` = typical minutes in that state, `next` = where it goes afterwards (probabilities add up to 1). The first state with power 0 counts as "off".
+   - **Performance:** the built-in model handles every combination of all appliance states. The number of combinations is the product of the number of states (currently 38,880). Each further appliance multiplies it, e.g. a 3-state appliance ×3. Keep it below roughly 200,000 combinations, or use fewer states per appliance; you can also deselect devices in the house.
+   - Without a library entry, the built-in model simply does not estimate the device.
+
+3. **Recorded data** – name its file `heat_pump.h5` (or use `--map`) and run the import again. The import script reads the known device IDs from `data/devices.json`.
+
+4. **External models** – a trained model only estimates the devices it was trained on. Retrain the models in your framework with the new device and add it to `DEVICES` in your adapter. The app matches device IDs case-insensitively (`AHU` = `ahu`).
+
+5. **README** – add the device to the [Devices](#devices) table.
+
+## Adding a NILM Algorithm
+
+There are two ways. For trained models (Python) use the first one.
+
+### A. External algorithm (Python, through the model server)
+
+Nothing in the app has to change: every model the adapter lists appears in the *Model* field.
+
+1. **Describe the model** in `list_models(settings)` of your adapter (`models/serve_adapter.py`; for the framework: add a row to `MODELS`):
+
+   | Field | Meaning |
+   | --- | --- |
+   | `id` | Unique ID; for the framework also the cache file prefix (`{model}` in `file_pattern`) |
+   | `name`, `group` | Shown in the *Model* field (grouped) |
+   | `needsReactive` | `true` if the model needs reactive power Q besides active power P |
+   | `devices` | Device IDs the model estimates |
+   | `outputs` | `{"power": bool, "on": bool, "prob": bool}`: what the model delivers |
+   | `window`, `center` | Input window in minutes; `center: true` if it estimates the middle of the window (the last `window/2` minutes are then provisional) |
+   | `thresholds` | On/off threshold per device in watts |
+   | `trained` | `true` for trained models (enables the training-day warning) |
+   | `available`, `reason` | Optional: `false` and a text if the model cannot be used (e.g. file missing) |
+
+2. **Implement the prediction** in `predict(model_id, frame, settings)`:
+   - `frame` is a pandas DataFrame with one row per minute (local time) and the columns `P` (W) and, with recorded data, `Q` (var); missing minutes are NaN.
+   - Return `{device_id: {"power": [...], "on": [...], "prob": [...]}}` with exactly one value per row of `frame`. Use `None` for a quantity the model does not produce. The helper `to_result()` in the template derives on/off from the thresholds when only power is known.
+   - Convert the input to what the model was trained with (column names, scaler, naive UTC timestamps, window padding at the end) inside the adapter.
+   - Load model files once and keep them in memory (the template's `_load()` does this); the app asks about once per second.
+
+3. **Make the model file available** in the folder and with the name given by `models_dir`, `building` and `file_pattern` in `models/config.json`.
+
+4. **Test it:**
+   - Open http://localhost:8000/api/models: the model must be listed with `"available": true`.
+   - Choose it in the app. Errors of the adapter appear in the panel ("Model error: …") and in full in the server console.
+   - Compare it on test days (*Test day* label) with the actual values; the accuracy figures use the model's thresholds and leave out provisional minutes.
+
+### B. Built-in algorithm (JavaScript, in the browser)
+
+For algorithms that need no training and should run without the model server. They must be fast enough for one update per simulated minute (well under 10 ms).
+
+1. Create a class in `src/` (see `FhmmDisaggregator` in `src/disaggregation.js`) with
+   - a property `appliances`: `[{ id, name, color }]`, and
+   - a method `update(watts)` that is called once per smart meter minute and returns
+     `{ total, appliances: [{ id, name, color, pOn, state, stateProbability, estimate, sd }], residual, confidence }`.
+     Values the algorithm does not have may be `null`; `residual` should be `total − Σ estimate`.
+2. Wire it up in `src/main.js`: `rebuildDisaggregation()` creates the built-in model (currently always `FhmmDisaggregator`), `feedDisaggregation()` feeds it every new minute. To offer it as a choice, add an `<option>` to `#model-select` in `index.html` and create your class in `rebuildDisaggregation()` when it is selected.
+3. Table, chart, accuracy figures, inspecting a minute and recalculating the day work automatically with the result format above.
 
 ## Isometric View
 
